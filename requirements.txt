@@ -7,3 +7,5 @@ sentence-transformers
 pymupdf
 pytesseract
 pillow
+psycopg2-binary
+python-dotenv
