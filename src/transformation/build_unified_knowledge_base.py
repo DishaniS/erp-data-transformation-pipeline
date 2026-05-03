@@ -62,8 +62,19 @@ def main():
             f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
     print("\nUnified AI Knowledge Base created successfully.")
-    print(f"Total records: {len(unified_records)}")
-    print(f"Saved JSON: {OUTPUT_JSON}")
+
+    # Summary (IMPORTANT)
+    erp_count = len(load_records("erp_sales_records.json"))
+    policy_count = len(load_records("policy_documents.json"))
+    image_count = len(load_records("image_documents.json"))
+
+    print("\nSummary:")
+    print(f"ERP records: {erp_count}")
+    print(f"Policy records: {policy_count}")
+    print(f"Image records: {image_count}")
+    print(f"Total unified records: {len(unified_records)}")
+
+    print(f"\nSaved JSON: {OUTPUT_JSON}")
     print(f"Saved JSONL: {OUTPUT_JSONL}")
 
 
