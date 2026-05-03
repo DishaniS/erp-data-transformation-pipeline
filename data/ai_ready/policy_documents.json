@@ -1,0 +1,206 @@
+[
+  {
+    "record_id": "order_approval_policy_section_0",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "Introduction",
+    "text": "Enterprise Order Approval and Processing Policy",
+    "text_for_ai": "Introduction: Enterprise Order Approval and Processing Policy",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_1",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "1. Purpose",
+    "text": "This policy outlines the procedures and approval hierarchy for processing sales orders within the ERP system.",
+    "text_for_ai": "1. Purpose: This policy outlines the procedures and approval hierarchy for processing sales orders within the ERP system.",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_2",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "2. Scope",
+    "text": "Applies to all orders created through the ERP system, including online and offline transactions.",
+    "text_for_ai": "2. Scope: Applies to all orders created through the ERP system, including online and offline transactions.",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_3",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "3. Order Classification",
+    "text": "Orders are categorized as: • Standard Orders (≤ USD 1000) • High-Value Orders (> USD 1000) • Bulk Orders (> 50 items) • International Orders",
+    "text_for_ai": "3. Order Classification: Orders are categorized as: • Standard Orders (≤ USD 1000) • High-Value Orders (> USD 1000) • Bulk Orders (> 50 items) • International Orders",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_4",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "5. Special Conditions",
+    "text": "• Bulk orders must be validated by the Sales Department • International orders require compliance verification • Orders missing customer or billing data are automatically rejected",
+    "text_for_ai": "5. Special Conditions: • Bulk orders must be validated by the Sales Department • International orders require compliance verification • Orders missing customer or billing data are automatically rejected",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_5",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "6. ERP Workflow Integration",
+    "text": "Each order must: • Be assigned a unique Sales Order ID • Be linked to a Customer ID • Maintain traceability across: o Order creation o Approval stages o Shipment and billing",
+    "text_for_ai": "6. ERP Workflow Integration: Each order must: • Be assigned a unique Sales Order ID • Be linked to a Customer ID • Maintain traceability across: o Order creation o Approval stages o Shipment and billing",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_6",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "7. Risk Control Measures",
+    "text": "• Fraud detection checks for high-value orders • Duplicate order detection • Credit validation for customers",
+    "text_for_ai": "7. Risk Control Measures: • Fraud detection checks for high-value orders • Duplicate order detection • Credit validation for customers",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_7",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "8. Processing Timeline",
+    "text": "• Order validation: same day • Approval cycle: 1–2 days • Fulfillment: 2–5 business days",
+    "text_for_ai": "8. Processing Timeline: • Order validation: same day • Approval cycle: 1–2 days • Fulfillment: 2–5 business days",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "order_approval_policy_section_8",
+    "record_type": "policy_document",
+    "document_name": "order_approval_policy",
+    "section_title": "9. Audit and Monitoring",
+    "text": "All order transactions are: • Logged in ERP system • Tracked for anomalies • Available for audit and reporting",
+    "text_for_ai": "9. Audit and Monitoring: All order transactions are: • Logged in ERP system • Tracked for anomalies • Available for audit and reporting",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_0",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "Introduction",
+    "text": "Enterprise Sales Refund and Return Policy",
+    "text_for_ai": "Introduction: Enterprise Sales Refund and Return Policy",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_1",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "1. Purpose",
+    "text": "This policy defines the rules, conditions, and procedures governing refund and return requests for products sold through the organization's ERP-managed sales system.",
+    "text_for_ai": "1. Purpose: This policy defines the rules, conditions, and procedures governing refund and return requests for products sold through the organization's ERP-managed sales system.",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_2",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "2. Scope",
+    "text": "This policy applies to all customers, sales representatives, and finance personnel involved in order processing, delivery, and refund management.",
+    "text_for_ai": "2. Scope: This policy applies to all customers, sales representatives, and finance personnel involved in order processing, delivery, and refund management.",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_3",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "3.1 Refund requests must be submitted within 30 calendar days from the order delivery",
+    "text": "date.",
+    "text_for_ai": "3.1 Refund requests must be submitted within 30 calendar days from the order delivery: date.",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_4",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "5. Exceptions",
+    "text": "• Products marked as “Final Sale” are not eligible for refund. • Refunds will not be processed for damages caused by misuse or negligence. • Digital products and services are non-refundable.",
+    "text_for_ai": "5. Exceptions: • Products marked as “Final Sale” are not eligible for refund. • Refunds will not be processed for damages caused by misuse or negligence. • Digital products and services are non-refundable.",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_5",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "6. Processing Timeline",
+    "text": "• Refund validation: 2 business days • Approval cycle: 1–3 business days • Payment processing: 5–7 business days",
+    "text_for_ai": "6. Processing Timeline: • Refund validation: 2 business days • Approval cycle: 1–3 business days • Payment processing: 5–7 business days",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_6",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "7. ERP System Integration",
+    "text": "All refund requests must be: • Logged in the ERP system • Linked to the corresponding Sales Order ID • Associated with customer profile data",
+    "text_for_ai": "7. ERP System Integration: All refund requests must be: • Logged in the ERP system • Linked to the corresponding Sales Order ID • Associated with customer profile data",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  },
+  {
+    "record_id": "sales_refund_policy_section_7",
+    "record_type": "policy_document",
+    "document_name": "sales_refund_policy",
+    "section_title": "8. Audit and Compliance",
+    "text": "All refund transactions are: • Logged for audit trails • Subject to compliance review • Stored for a minimum of 5 years",
+    "text_for_ai": "8. Audit and Compliance: All refund transactions are: • Logged for audit trails • Subject to compliance review • Stored for a minimum of 5 years",
+    "metadata": {
+      "source": "policy_document",
+      "processing_type": "one_time_pdf_extraction"
+    }
+  }
+]
