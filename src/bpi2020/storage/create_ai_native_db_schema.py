@@ -115,6 +115,39 @@ CREATE TABLE IF NOT EXISTS transformation_logs (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+
+CREATE TABLE IF NOT EXISTS sync_state (
+    source_table VARCHAR(150) PRIMARY KEY,
+    last_synced_source_id BIGINT NOT NULL DEFAULT 0,
+    last_synced_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_ready_documents (
+    id SERIAL PRIMARY KEY,
+
+    document_id TEXT UNIQUE NOT NULL,
+    document_type VARCHAR(100),
+    document_name TEXT,
+
+    source_file_path TEXT,
+    extracted_text TEXT,
+    text_for_ai TEXT,
+    document_json JSONB NOT NULL,
+
+    embedding_status VARCHAR(50) DEFAULT 'pending',
+    qdrant_point_id TEXT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE INDEX IF NOT EXISTS idx_ai_ready_documents_document_type
+ON ai_ready_documents (document_type);
+
+
+CREATE INDEX IF NOT EXISTS idx_ai_ready_documents_embedding_status
+ON ai_ready_documents (embedding_status);
+
 """
 
 
@@ -134,7 +167,8 @@ def main():
     print("  - cleaned_event_logs")
     print("  - ai_ready_cases")
     print("  - transformation_logs")
-
+    print("  - ai_ready_documents")
+    print("  - sync_state")
 
 if __name__ == "__main__":
     main()

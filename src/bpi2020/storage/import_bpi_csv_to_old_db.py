@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 
-load_dotenv()
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-RAW_DIR = PROJECT_ROOT / "data" / "raw"
+load_dotenv(PROJECT_ROOT / ".env")
+
+RAW_DIR = PROJECT_ROOT / "data" / "bpi2020" / "raw"
+LEGACY_RAW_DIR = PROJECT_ROOT / "data" / "raw"
 
 DB_HOST = os.getenv("BPI_OLD_DB_HOST", "localhost")
 DB_PORT = os.getenv("BPI_OLD_DB_PORT", "5432")
@@ -98,8 +99,30 @@ def load_csv(csv_path: Path) -> pd.DataFrame:
         return pd.read_csv(csv_path, dtype=str, encoding="latin1", low_memory=False)
 
 
+def resolve_csv_path(csv_file: str) -> Path:
+    for base_dir in (RAW_DIR, LEGACY_RAW_DIR):
+        candidate = base_dir / csv_file
+        if candidate.exists():
+            return candidate
+
+    return RAW_DIR / csv_file
+
+
+def ensure_source_row_id(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add a stable sequential source row identifier for incremental sync when the
+    source CSV does not already include one.
+    """
+    df = df.copy()
+
+    if "source_row_id" not in df.columns:
+        df.insert(0, "source_row_id", range(1, len(df) + 1))
+
+    return df
+
+
 def import_dataset(csv_file: str, table_name: str):
-    csv_path = RAW_DIR / csv_file
+    csv_path = resolve_csv_path(csv_file)
 
     if not csv_path.exists():
         print(f"Skipping: {csv_file} not found in {RAW_DIR}")
@@ -112,6 +135,7 @@ def import_dataset(csv_file: str, table_name: str):
 
     cleaned_columns = [clean_column_name(c) for c in df.columns]
     df.columns = make_unique_columns(cleaned_columns)
+    df = ensure_source_row_id(df)
 
     duplicates = pd.Series(cleaned_columns)[pd.Series(cleaned_columns).duplicated()].unique()
 
@@ -140,6 +164,7 @@ def import_dataset(csv_file: str, table_name: str):
 
 def main():
     print("Starting BPI 2020 raw CSV import into old ERP PostgreSQL database...")
+    print(f"Preferred raw data folder: {RAW_DIR}")
 
     for csv_file, table_name in DATASETS.items():
         import_dataset(csv_file, table_name)

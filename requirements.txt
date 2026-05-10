@@ -1,11 +1,9 @@
 pandas
 sqlalchemy
-psycopg2
-fastapi
-uvicorn
-sentence-transformers
+psycopg2-binary
+python-dotenv
 pymupdf
 pytesseract
 pillow
-psycopg2-binary
-python-dotenv
+sentence-transformers
+qdrant-client
