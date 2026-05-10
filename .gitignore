@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Ignore JSON and JSONL data files
+*.json
+*.jsonl
+
+*.csv
+
 # Distribution / packaging
 .Python
 build/
