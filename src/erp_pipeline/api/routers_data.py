@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -38,11 +39,65 @@ from erp_pipeline.orchestration import (
     UnsupportedUploadError,
 )
 
+LOGGER = logging.getLogger("erp_pipeline.api.routers_data")
+
 # ----------------------------------------------------------------------
 # Uploads
 # ----------------------------------------------------------------------
 
 files_router = APIRouter(prefix="/v1/files", tags=["files"])
+
+
+def _publish_file_schema(services: Any, schema: Any) -> tuple[bool, str | None]:
+    """Register the uploaded file's source system, then publish its schema.
+
+    WHY THE REGISTRATION STEP EXISTS
+    --------------------------------
+    ``schema_snapshots.source_system_id`` carries a foreign key to
+    ``source_systems``. An uploaded file's schema is attributed to the logical
+    system named by ``IngestionOptions.source_system_id`` (``file_source`` by
+    default), which nothing else ever creates a row for. Publishing without
+    registering it first therefore raised ``SourceSystemNotFoundError`` on
+    every single upload.
+
+    That failure used to be caught and discarded, so the API reported a
+    successful upload while the catalog stayed empty. Registration is
+    idempotent, so doing it here is safe on every call.
+
+    Returns ``(published, problem)``. A problem is returned rather than raised
+    because the upload itself genuinely succeeded - the bytes are stored and
+    the schema was inferred. The caller surfaces it as a warning so the
+    response can never again claim more than actually happened.
+    """
+    catalog = services.catalog
+    ingestion = getattr(services, "ingestion", None)
+
+    try:
+        if ingestion is not None and hasattr(ingestion, "source_system"):
+            catalog.register_source_system(ingestion.source_system())
+
+        catalog.publish_schema(schema)
+
+        return True, None
+    except Exception as error:  # noqa: BLE001 - reported, never discarded
+        # The exception type and message are logged for an operator. Neither is
+        # echoed to the client verbatim, because a driver error can embed a
+        # connection string.
+        LOGGER.warning(
+            "schema inferred but not published to the catalog",
+            exc_info=True,
+            extra={
+                "schema_id": getattr(schema, "schema_id", None),
+                "source_system_id": getattr(schema, "source_system_id", None),
+                "error_type": type(error).__name__,
+            },
+        )
+
+        return False, (
+            "the schema was inferred but could not be published to the "
+            f"catalog ({type(error).__name__}); it is available for this "
+            "process only and will not survive a restart"
+        )
 
 CSV_SUFFIXES = {".csv", ".tsv", ".txt"}
 DOCUMENT_SUFFIXES = {".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
@@ -86,13 +141,13 @@ def upload_csv(
     result = service.services.ingest_upload(stored.upload_id)
     schema = getattr(result, "schema", None)
     published = False
+    warnings = [str(w) for w in (getattr(result, "warnings", ()) or ())][:20]
 
     if schema is not None and service.services.catalog is not None:
-        try:
-            service.services.catalog.publish_schema(schema)
-            published = True
-        except Exception:  # noqa: BLE001 - publishing is best effort
-            published = False
+        published, problem = _publish_file_schema(service.services, schema)
+
+        if problem is not None:
+            warnings.append(problem)
 
     if schema is not None:
         service.services.schema_cache[schema.schema_id] = schema
@@ -107,7 +162,7 @@ def upload_csv(
         columns=sum(len(e.fields) for e in getattr(schema, "entities", ()) or ()),
         rows_observed=getattr(result, "data_row_count", 0) or 0,
         published=published,
-        warnings=[str(w) for w in (getattr(result, "warnings", ()) or ())][:20],
+        warnings=warnings[:21],
     )
 
 

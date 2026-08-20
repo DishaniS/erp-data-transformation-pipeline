@@ -173,12 +173,58 @@ class PipelineServices:
         self.schema_cache[schema.schema_id] = schema
 
         if self.catalog is not None:
-            try:
-                self.catalog.publish_schema(schema)
-            except Exception:  # noqa: BLE001 - publishing is best effort
-                LOGGER.warning("schema discovered but not published to the catalog")
+            self._publish_discovered_schema(source, schema)
 
         return schema
+
+    def _publish_discovered_schema(
+        self, source: RegisteredSource, schema: Any
+    ) -> bool:
+        """Register the source system, then publish the discovered schema.
+
+        ``schema_snapshots.source_system_id`` is a foreign key into
+        ``source_systems``. A source registered through ``POST /v1/sources``
+        lives in ``erp_runtime.registered_sources``, which is a different
+        table, so the catalog has never heard of it. Publishing without
+        registering first therefore failed for every discovery.
+
+        Registration is idempotent. The ``SourceSystem`` carries no credential:
+        it is built from the registered source's identity and type only, and
+        the connection settings resolved above are deliberately not consulted.
+        """
+        from erp_pipeline.schemas.source_models import SourceSystem
+
+        try:
+            self.catalog.register_source_system(
+                SourceSystem(
+                    source_system_id=schema.source_system_id,
+                    name=getattr(source, "name", None) or schema.source_system_id,
+                    source_type=source.source_type,
+                    description=(
+                        "Registered through the orchestration API and "
+                        "discovered by erp_pipeline.discovery."
+                    ),
+                )
+            )
+            self.catalog.publish_schema(schema)
+
+            return True
+        except Exception as error:  # noqa: BLE001 - reported, never discarded
+            # Logged with the failure type so this stops being invisible. The
+            # message is not re-raised: discovery itself succeeded and the
+            # schema is usable from schema_cache for this process.
+            LOGGER.warning(
+                "schema discovered but not published to the catalog; it will "
+                "not survive a restart",
+                exc_info=True,
+                extra={
+                    "schema_id": getattr(schema, "schema_id", None),
+                    "source_system_id": getattr(schema, "source_system_id", None),
+                    "error_type": type(error).__name__,
+                },
+            )
+
+            return False
 
     def extract_snapshot(
         self, source: RegisteredSource, request: ExtractionRequest
