@@ -1,0 +1,54 @@
+{
+  "info": {
+    "name": "ERP API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Synthetic ERP collection for Phase 7 tests."
+  },
+  "item": [
+    {
+      "name": "Get Invoice",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Tenant-ID",
+            "value": "tenant-42"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/invoices/:id?expand=lines",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "invoices",
+            ":id"
+          ],
+          "query": [
+            {
+              "key": "expand",
+              "value": "lines"
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "INV-1001"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Invoices",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/invoices?status=PAID&limit=50"
+      }
+    }
+  ]
+}

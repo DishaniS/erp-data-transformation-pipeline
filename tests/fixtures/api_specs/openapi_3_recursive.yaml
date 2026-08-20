@@ -1,0 +1,26 @@
+openapi: "3.0.3"
+info: {title: ERP Org Chart API, version: "1.0.0"}
+paths:
+  /employees/{id}:
+    get:
+      operationId: getEmployee
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Employee
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Employee"}
+components:
+  schemas:
+    Employee:
+      type: object
+      required: [employeeId]
+      properties:
+        employeeId: {type: string}
+        displayName: {type: string}
+        manager: {$ref: "#/components/schemas/Employee"}
+        reports:
+          type: array
+          items: {$ref: "#/components/schemas/Employee"}

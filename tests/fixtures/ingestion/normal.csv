@@ -1,0 +1,4 @@
+invoice_no,customer,amount,issued_on,approved
+INV-1001,Acme Supplies,1500,2026-01-15,true
+INV-1002,Globex Trading,2750.50,2026-02-01,false
+INV-1003,Initech Ltd,900,2026-03-10,true

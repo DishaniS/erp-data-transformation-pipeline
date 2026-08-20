@@ -1,0 +1,114 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Legacy ERP API",
+    "version": "1.0.0"
+  },
+  "basePath": "/legacy/v1",
+  "consumes": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "apiKeyHeader": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key"
+    }
+  },
+  "paths": {
+    "/customers": {
+      "get": {
+        "operationId": "listCustomers",
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/LegacyCustomer"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCustomer",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LegacyCustomer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/LegacyCustomer"
+            }
+          }
+        }
+      }
+    },
+    "/customers/upload": {
+      "post": {
+        "operationId": "uploadCustomers",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "parameters": [
+          {
+            "name": "fileName",
+            "in": "formData",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "rowCount",
+            "in": "formData",
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "LegacyCustomer": {
+      "type": "object",
+      "required": [
+        "customerNumber"
+      ],
+      "properties": {
+        "customerNumber": {
+          "type": "string"
+        },
+        "creditLimit": {
+          "type": "number",
+          "format": "double"
+        },
+        "activeFlag": {
+          "type": "boolean"
+        },
+        "registeredOn": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}

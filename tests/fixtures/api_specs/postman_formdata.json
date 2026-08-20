@@ -1,0 +1,61 @@
+{
+  "info": {
+    "name": "ERP Uploads",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Upload Invoices",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/invoices/import",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "period",
+              "value": "2026-Q1",
+              "type": "text"
+            },
+            {
+              "key": "dryRun",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "file",
+              "type": "file",
+              "src": "C:/Users/someone/Desktop/invoices.csv"
+            },
+            {
+              "key": "legacyFlag",
+              "value": "x",
+              "type": "text",
+              "disabled": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Submit Form",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/forms/submit",
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "customerNumber",
+              "value": "C-1"
+            },
+            {
+              "key": "totalAmt",
+              "value": "99.95"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

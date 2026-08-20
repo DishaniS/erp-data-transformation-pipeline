@@ -1,0 +1,4 @@
+inv_no,cust_no,cust_name,email_addr,total_amt,status
+INV-001,C001,Acme Trading,ops@example.test,2500.50,P
+INV-002,C002,Beta Supplies,info@example.test,1200.00,C
+INV-003,C003,Gamma Ltd,hello@example.test,hello,P

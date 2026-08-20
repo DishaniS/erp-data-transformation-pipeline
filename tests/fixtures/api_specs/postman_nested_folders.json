@@ -1,0 +1,51 @@
+{
+  "info": {
+    "name": "ERP API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "Get Invoice",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/invoices/:id"
+          }
+        },
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/invoices"
+          }
+        },
+        {
+          "name": "Reporting",
+          "item": [
+            {
+              "name": "Monthly Totals",
+              "request": {
+                "method": "GET",
+                "url": "{{baseUrl}}/invoices/reports/monthly"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Get Invoice",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/customers/:id"
+          }
+        }
+      ]
+    }
+  ]
+}

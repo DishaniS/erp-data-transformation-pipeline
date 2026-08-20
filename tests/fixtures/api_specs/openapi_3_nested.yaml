@@ -1,0 +1,46 @@
+openapi: "3.0.3"
+info: {title: ERP Nested API, version: "1.0.0"}
+paths:
+  /purchase-orders:
+    get:
+      operationId: listPurchaseOrders
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/PurchaseOrder"}
+components:
+  schemas:
+    PurchaseOrder:
+      type: object
+      required: [orderId]
+      properties:
+        orderId: {type: string}
+        supplier:
+          type: object
+          required: [supplierId]
+          properties:
+            supplierId: {type: string}
+            address:
+              type: object
+              properties:
+                city: {type: string}
+                geo:
+                  type: object
+                  properties:
+                    lat: {type: number}
+                    lon: {type: number}
+        lines:
+          type: array
+          items:
+            type: object
+            required: [sku]
+            properties:
+              sku: {type: string}
+              quantity: {type: integer}
+              tags:
+                type: array
+                items: {type: string}

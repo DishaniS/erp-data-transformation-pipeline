@@ -1,0 +1,36 @@
+openapi: "3.0.3"
+info: {title: ERP Secured API, version: "1.0.0"}
+security:
+  - bearerAuth: []
+paths:
+  /secure/invoices:
+    get:
+      operationId: listSecureInvoices
+      security:
+        - bearerAuth: []
+        - tenantApiKey: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {invoiceId: {type: string}}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    tenantApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    erpOauth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.invalid/authorize
+          tokenUrl: https://auth.example.invalid/token
+          scopes: {"invoices:read": Read invoices}

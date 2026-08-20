@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "ERP Examples",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Invoice",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/invoices/:id"
+      },
+      "response": [
+        {
+          "name": "Paid invoice",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\"invoiceId\": \"INV-1\", \"customerId\": \"CUS-5\", \"totalAmount\": 5000, \"status\": \"PAID\", \"issuedOn\": \"2026-01-15\", \"settled\": true, \"note\": null, \"customer\": {\"customerId\": \"CUS-5\", \"displayName\": \"SECRET_CUSTOMER_NAME_31007\", \"contact\": {\"email\": \"billing@example.invalid\"}}, \"lines\": [{\"sku\": \"SKU-A\", \"quantity\": 2, \"unitPrice\": 1500.5}, {\"sku\": \"SKU-B\", \"quantity\": 1, \"unitPrice\": 2000}], \"tags\": [\"urgent\", \"approved\"]}"
+        },
+        {
+          "name": "Not found",
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\"type\": \"https://errors.example.invalid/not-found\", \"title\": \"Invoice not found\", \"status\": 404}"
+        }
+      ]
+    },
+    {
+      "name": "List Invoices",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/invoices"
+      },
+      "response": [
+        {
+          "name": "Array body",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "[{\"invoiceId\": \"I1\", \"amount\": 10}, {\"invoiceId\": \"I2\", \"amount\": 20}]"
+        }
+      ]
+    }
+  ]
+}

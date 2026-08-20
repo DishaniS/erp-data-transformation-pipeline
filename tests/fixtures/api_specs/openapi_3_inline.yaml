@@ -1,0 +1,43 @@
+openapi: "3.0.3"
+info: {title: ERP Inline API, version: "1.0.0"}
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      responses:
+        "200":
+          description: Inline list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: {type: integer}
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        orderId: {type: string}
+            text/plain:
+              schema: {type: string}
+    post:
+      operationId: createOrder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: {type: number}
+                reference: {type: string}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId: {type: string}

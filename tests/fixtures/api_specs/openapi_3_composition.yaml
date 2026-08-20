@@ -1,0 +1,58 @@
+openapi: "3.0.3"
+info: {title: ERP Composition API, version: "1.0.0"}
+paths:
+  /documents:
+    post:
+      operationId: createDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Invoice"}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PaymentTarget"}
+components:
+  schemas:
+    BaseDocument:
+      type: object
+      required: [documentId]
+      properties:
+        documentId: {type: string}
+        createdAt: {type: string, format: date-time}
+    Invoice:
+      allOf:
+        - $ref: "#/components/schemas/BaseDocument"
+        - type: object
+          required: [total]
+          properties:
+            total: {type: number}
+            currency: {type: string}
+    BankAccount:
+      type: object
+      properties:
+        iban: {type: string}
+    CreditCard:
+      type: object
+      properties:
+        maskedNumber: {type: string}
+    PaymentTarget:
+      type: object
+      properties:
+        method:
+          oneOf:
+            - $ref: "#/components/schemas/BankAccount"
+            - $ref: "#/components/schemas/CreditCard"
+        fallback:
+          anyOf:
+            - {type: string}
+            - {type: integer}
+        conflicting:
+          allOf:
+            - type: object
+              properties: {shared: {type: string}}
+            - type: object
+              properties: {shared: {type: integer}}

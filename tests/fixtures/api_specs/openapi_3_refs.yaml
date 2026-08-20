@@ -1,0 +1,46 @@
+openapi: "3.0.3"
+info: {title: ERP Reference API, version: "1.0.0"}
+paths:
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Customer"}
+  /external:
+    get:
+      operationId: getExternal
+      responses:
+        "200":
+          description: Remote contract
+          content:
+            application/json:
+              schema:
+                $ref: "https://specs.example.invalid/common.yaml#/components/schemas/Shared"
+  /missing:
+    get:
+      operationId: getMissing
+      responses:
+        "200":
+          description: Dangling reference
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DoesNotExist"}
+components:
+  schemas:
+    Customer:
+      type: object
+      required: [customerId]
+      properties:
+        customerId: {type: string}
+        address: {$ref: "#/components/schemas/Address"}
+    Address:
+      type: object
+      properties:
+        city: {type: string}
+        country: {type: string}

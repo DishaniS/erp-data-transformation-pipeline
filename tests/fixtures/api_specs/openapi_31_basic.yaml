@@ -1,0 +1,24 @@
+openapi: "3.1.0"
+info: {title: ERP 3.1 API, version: "2.0.0"}
+paths:
+  /payments:
+    get:
+      operationId: listPayments
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Payment"}
+components:
+  schemas:
+    Payment:
+      type: object
+      required: [paymentId]
+      properties:
+        paymentId: {type: string}
+        note:
+          type: [string, "null"]
+        amount: {type: number}
+        mixedField:
+          type: [string, integer]

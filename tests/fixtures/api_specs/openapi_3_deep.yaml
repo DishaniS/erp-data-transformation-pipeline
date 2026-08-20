@@ -1,0 +1,27 @@
+openapi: "3.0.3"
+info: {title: ERP Deep Nesting API, version: "1.0.0"}
+paths:
+  /deep:
+    get:
+      operationId: getDeep
+      responses:
+        "200":
+          description: Deeply nested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  l1:
+                    type: object
+                    properties:
+                      l2:
+                        type: object
+                        properties:
+                          l3:
+                            type: object
+                            properties:
+                              l4:
+                                type: object
+                                properties:
+                                  l5: {type: string}

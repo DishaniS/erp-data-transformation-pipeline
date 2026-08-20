@@ -1,0 +1,4 @@
+amount,quantity,code,flag,when
+100,5,007,true,2026-01-15
+200.25,6,0012,false,2026-02-01T09:30:00
+N/A,7,0013,true,2026-03-10

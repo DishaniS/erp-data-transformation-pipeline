@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "ERP Mixed Examples",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Payment",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/payments/:id"
+      },
+      "response": [
+        {
+          "name": "First",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\"id\": 1, \"status\": \"PAID\"}"
+        },
+        {
+          "name": "Second",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\"id\": \"2\", \"status\": \"FAILED\", \"message\": \"declined\"}"
+        }
+      ]
+    },
+    {
+      "name": "Get Receipt",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/receipts/:id"
+      },
+      "response": [
+        {
+          "name": "HTML body",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "html",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "text/html"
+            }
+          ],
+          "body": "<html><body>SECRET_HTML_BODY_10011</body></html>"
+        }
+      ]
+    }
+  ]
+}

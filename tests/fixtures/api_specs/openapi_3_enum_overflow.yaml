@@ -1,0 +1,17 @@
+openapi: "3.0.3"
+info: {title: ERP Enum API, version: "1.0.0"}
+paths:
+  /codes:
+    get:
+      operationId: listCodes
+      responses:
+        "200":
+          description: Codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum: ["CODE_000", "CODE_001", "CODE_002", "CODE_003", "CODE_004", "CODE_005", "CODE_006", "CODE_007", "CODE_008", "CODE_009", "CODE_010", "CODE_011", "CODE_012", "CODE_013", "CODE_014", "CODE_015", "CODE_016", "CODE_017", "CODE_018", "CODE_019", "CODE_020", "CODE_021", "CODE_022", "CODE_023", "CODE_024", "CODE_025", "CODE_026", "CODE_027", "CODE_028", "CODE_029", "CODE_030", "CODE_031", "CODE_032", "CODE_033", "CODE_034", "CODE_035", "CODE_036", "CODE_037", "CODE_038", "CODE_039", "CODE_040", "CODE_041", "CODE_042", "CODE_043", "CODE_044", "CODE_045", "CODE_046", "CODE_047", "CODE_048", "CODE_049", "CODE_050", "CODE_051", "CODE_052", "CODE_053", "CODE_054", "CODE_055", "CODE_056", "CODE_057", "CODE_058", "CODE_059"]

@@ -1,0 +1,194 @@
+openapi: 3.0.3
+info:
+  title: ERP Invoicing API
+  version: 1.4.0
+  description: Synthetic ERP contract for Phase 7 tests.
+servers:
+- url: https://erp.example.invalid/api/v1?apikey=SECRET_QUERY_KEY_71122
+paths:
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags:
+      - invoices
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - PAID
+          - CANCELLED
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          format: int32
+      - name: X-Tenant-ID
+        in: header
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Bad request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      operationId: createInvoice
+      tags:
+      - invoices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoiceRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+  /invoices/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      operationId: getInvoice
+      tags:
+      - invoices
+      deprecated: false
+      responses:
+        '200':
+          description: One invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        default:
+          description: Unexpected
+    delete:
+      operationId: cancelInvoice
+      deprecated: true
+      responses:
+        '204':
+          description: Cancelled
+components:
+  schemas:
+    Invoice:
+      type: object
+      required:
+      - invoiceId
+      - totalAmount
+      properties:
+        invoiceId:
+          type: string
+          description: Invoice business key.
+        issuedOn:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        totalAmount:
+          type: number
+          format: double
+        lineCount:
+          type: integer
+          format: int64
+        settled:
+          type: boolean
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PAID
+          - CANCELLED
+        attachment:
+          type: string
+          format: binary
+        note:
+          type: string
+          nullable: true
+        customer:
+          $ref: '#/components/schemas/Customer'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLine'
+        example_holder:
+          type: string
+          example: SECRET_EXAMPLE_VALUE_50021
+    Customer:
+      type: object
+      required:
+      - customerId
+      properties:
+        customerId:
+          type: string
+        displayName:
+          type: string
+        contact:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+    InvoiceLine:
+      type: object
+      required:
+      - sku
+      - quantity
+      properties:
+        sku:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+    CreateInvoiceRequest:
+      type: object
+      required:
+      - customerId
+      - lines
+      properties:
+        customerId:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLine'
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer

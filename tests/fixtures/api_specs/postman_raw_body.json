@@ -1,0 +1,46 @@
+{
+  "info": {
+    "name": "ERP Bodies",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Invoice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/invoices",
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\"customerId\": \"CUS-9\", \"currency\": \"LKR\", \"totalAmount\": 4200.75, \"urgent\": true, \"lines\": [{\"sku\": \"SKU-Z\", \"quantity\": 3}], \"iban\": \"SECRET_IBAN_55231\"}"
+        }
+      }
+    },
+    {
+      "name": "Invalid JSON Body",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/broken",
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{not valid json,,}"
+        }
+      }
+    }
+  ]
+}
