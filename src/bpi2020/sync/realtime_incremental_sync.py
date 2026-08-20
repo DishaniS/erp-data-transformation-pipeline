@@ -14,21 +14,28 @@ How it works:
     1. Reads last synced source_row_id from erp_ai_native_db.sync_state.
     2. Fetches new rows from old ERP DB where source_row_id > last_synced_source_id.
     3. Cleans and normalizes new records.
-    4. Inserts cleaned records into erp_ai_native_db.cleaned_event_logs.
+    4. UPSERTs cleaned records into erp_ai_native_db.cleaned_event_logs.
     5. Updates sync_state.
     6. Repeats every few seconds.
+
+Identity behaviour (Phase 0)
+----------------------------
+Rows are written with the same deterministic ``event_record_id`` the batch
+loader uses, and the write is an UPSERT on that key. Previously this was a
+plain INSERT, so any replay - a reset sync_state, an overlapping batch, a
+re-import of the source CSVs - silently duplicated events in
+cleaned_event_logs. Now a replay is a no-op update.
 """
 
-import os
 import re
 import json
+import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 
 # ============================================================
@@ -36,38 +43,27 @@ from sqlalchemy import create_engine, text
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-load_dotenv(PROJECT_ROOT / ".env")
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from bpi2020.common.config import PostgresSettings, get_int_setting
+from bpi2020.common.health import check_postgres
+from bpi2020.common.stable_ids import SOURCE_SYSTEM, make_event_record_id
 
 
 # ============================================================
 # Database configuration
 # ============================================================
 
-OLD_DB_HOST = os.getenv("OLD_DB_HOST", "localhost")
-OLD_DB_PORT = os.getenv("OLD_DB_PORT", "5432")
-OLD_DB_NAME = os.getenv("OLD_DB_NAME", "bpi2020_old_erp_db")
-OLD_DB_USER = os.getenv("OLD_DB_USER", "postgres")
-OLD_DB_PASSWORD = os.getenv("OLD_DB_PASSWORD", "postgres123")
+ERP_SOURCE_DB = PostgresSettings.erp_source()
+PIPELINE_DB = PostgresSettings.pipeline()
 
-AI_DB_HOST = os.getenv("AI_DB_HOST", "localhost")
-AI_DB_PORT = os.getenv("AI_DB_PORT", "5432")
-AI_DB_NAME = os.getenv("AI_DB_NAME", "erp_ai_native_db")
-AI_DB_USER = os.getenv("AI_DB_USER", "postgres")
-AI_DB_PASSWORD = os.getenv("AI_DB_PASSWORD", "postgres123")
+OLD_DB_NAME = ERP_SOURCE_DB.database
+AI_DB_NAME = PIPELINE_DB.database
 
-
-OLD_DATABASE_URL = (
-    f"postgresql+psycopg2://{OLD_DB_USER}:{OLD_DB_PASSWORD}"
-    f"@{OLD_DB_HOST}:{OLD_DB_PORT}/{OLD_DB_NAME}"
-)
-
-AI_DATABASE_URL = (
-    f"postgresql+psycopg2://{AI_DB_USER}:{AI_DB_PASSWORD}"
-    f"@{AI_DB_HOST}:{AI_DB_PORT}/{AI_DB_NAME}"
-)
-
-old_engine = create_engine(OLD_DATABASE_URL)
-ai_engine = create_engine(AI_DATABASE_URL)
+old_engine = ERP_SOURCE_DB.create_engine()
+ai_engine = PIPELINE_DB.create_engine()
 
 
 # ============================================================
@@ -83,8 +79,8 @@ RAW_TABLES: Dict[str, str] = {
 }
 
 
-POLL_INTERVAL_SECONDS = int(os.getenv("SYNC_POLL_INTERVAL_SECONDS", "10"))
-BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "1000"))
+POLL_INTERVAL_SECONDS = get_int_setting("SYNC_POLL_INTERVAL_SECONDS", 10)
+BATCH_SIZE = get_int_setting("SYNC_BATCH_SIZE", 1000)
 
 
 # ============================================================
@@ -412,10 +408,15 @@ def fetch_new_rows(source_table: str, last_synced_id: int) -> pd.DataFrame:
 
 
 def insert_cleaned_records(df: pd.DataFrame, source_table: str, process_type: str) -> int:
+    """UPSERT synced rows on the stable event key so replays cannot duplicate."""
     timestamp_cols = detect_timestamp_columns(df)
 
-    insert_sql = text("""
+    upsert_sql = text("""
         INSERT INTO cleaned_event_logs (
+            event_record_id,
+            source_system,
+            source_entity,
+            source_record_key,
             source_table,
             process_type,
             normalized_case_id,
@@ -424,6 +425,10 @@ def insert_cleaned_records(df: pd.DataFrame, source_table: str, process_type: st
             record_data
         )
         VALUES (
+            :event_record_id,
+            :source_system,
+            :source_entity,
+            :source_record_key,
             :source_table,
             :process_type,
             :normalized_case_id,
@@ -431,17 +436,44 @@ def insert_cleaned_records(df: pd.DataFrame, source_table: str, process_type: st
             :event_timestamp,
             CAST(:record_data AS JSONB)
         )
+        ON CONFLICT (event_record_id)
+        DO UPDATE SET
+            source_system = EXCLUDED.source_system,
+            source_entity = EXCLUDED.source_entity,
+            source_record_key = EXCLUDED.source_record_key,
+            source_table = EXCLUDED.source_table,
+            process_type = EXCLUDED.process_type,
+            normalized_case_id = EXCLUDED.normalized_case_id,
+            normalized_activity = EXCLUDED.normalized_activity,
+            event_timestamp = EXCLUDED.event_timestamp,
+            record_data = EXCLUDED.record_data
     """)
 
-    inserted_count = 0
+    written_count = 0
 
     with ai_engine.begin() as connection:
         for _, row in df.iterrows():
+            source_row_id = row.get("source_row_id")
+
+            if source_row_id is None or pd.isna(source_row_id):
+                raise ValueError(
+                    f"Row in {source_table} has no source_row_id, so no stable "
+                    "event_record_id can be derived. Re-run "
+                    "import_bpi_csv_to_old_db.py."
+                )
+
+            if isinstance(source_row_id, float) and source_row_id.is_integer():
+                source_row_id = int(source_row_id)
+
             record = make_json_safe_record(row.to_dict())
 
             connection.execute(
-                insert_sql,
+                upsert_sql,
                 {
+                    "event_record_id": make_event_record_id(source_table, source_row_id),
+                    "source_system": SOURCE_SYSTEM,
+                    "source_entity": source_table,
+                    "source_record_key": str(source_row_id),
                     "source_table": source_table,
                     "process_type": process_type,
                     "normalized_case_id": row.get("normalized_case_id"),
@@ -451,9 +483,9 @@ def insert_cleaned_records(df: pd.DataFrame, source_table: str, process_type: st
                 },
             )
 
-            inserted_count += 1
+            written_count += 1
 
-    return inserted_count
+    return written_count
 
 
 def sync_one_table(source_table: str, process_type: str):
@@ -510,12 +542,24 @@ def run_once():
             )
 
 
+def check_dependencies():
+    print(check_postgres(ERP_SOURCE_DB))
+    print(
+        check_postgres(
+            PIPELINE_DB, required_tables=("cleaned_event_logs", "sync_state")
+        )
+    )
+
+
 def run_forever():
     print("\nStarting near-real-time incremental sync...")
-    print(f"Source DB : {OLD_DB_NAME}")
-    print(f"Target DB : {AI_DB_NAME}")
+    print(f"Source DB : {ERP_SOURCE_DB.safe_target}")
+    print(f"Target DB : {PIPELINE_DB.safe_target}")
     print(f"Interval  : {POLL_INTERVAL_SECONDS} seconds")
     print(f"Batch size: {BATCH_SIZE}")
+
+    check_dependencies()
+
     print("\nPress CTRL + C to stop.\n")
 
     while True:
@@ -524,6 +568,27 @@ def run_forever():
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Near-real-time incremental sync from the legacy ERP tables."
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Run a single sync pass and exit instead of polling forever.",
+    )
+    args = parser.parse_args()
+
+    if args.once:
+        print("\nRunning a single incremental sync pass...")
+        print(f"Source DB : {ERP_SOURCE_DB.safe_target}")
+        print(f"Target DB : {PIPELINE_DB.safe_target}")
+        check_dependencies()
+        run_once()
+        print("\nSingle sync pass completed.")
+        return
+
     run_forever()
 
 

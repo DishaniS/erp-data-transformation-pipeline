@@ -19,9 +19,9 @@ Purpose:
     layer does not need to repeatedly reprocess raw files.
 """
 
-import os
 import json
 import hashlib
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -29,8 +29,7 @@ import fitz  # PyMuPDF
 import pandas as pd
 from PIL import Image
 import pytesseract
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 
 # ============================================================
@@ -38,6 +37,13 @@ from sqlalchemy import create_engine, text
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from bpi2020.common.config import PostgresSettings, get_tesseract_cmd
+from bpi2020.common.health import check_postgres, check_tesseract
+from bpi2020.common.stable_ids import compute_content_hash, make_document_record_id
 
 DOCUMENT_DIR = PROJECT_ROOT / "data" / "bpi2020" / "documents"
 IMAGE_DIR = PROJECT_ROOT / "data" / "bpi2020" / "images"
@@ -47,35 +53,25 @@ DOCUMENT_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-load_dotenv(PROJECT_ROOT / ".env")
-
 
 # ============================================================
 # Optional Windows Tesseract path
 # ============================================================
 
-TESSERACT_PATH = os.getenv("TESSERACT_PATH")
+TESSERACT_CMD = get_tesseract_cmd()
 
-if TESSERACT_PATH:
-    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+if TESSERACT_CMD:
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
 
 # ============================================================
 # Database configuration
 # ============================================================
 
-AI_DB_HOST = os.getenv("AI_DB_HOST", "localhost")
-AI_DB_PORT = os.getenv("AI_DB_PORT", "5432")
-AI_DB_NAME = os.getenv("AI_DB_NAME", "erp_ai_native_db")
-AI_DB_USER = os.getenv("AI_DB_USER", "postgres")
-AI_DB_PASSWORD = os.getenv("AI_DB_PASSWORD", "postgres")
+PIPELINE_DB = PostgresSettings.pipeline()
+AI_DB_NAME = PIPELINE_DB.database
 
-AI_DATABASE_URL = (
-    f"postgresql+psycopg2://{AI_DB_USER}:{AI_DB_PASSWORD}"
-    f"@{AI_DB_HOST}:{AI_DB_PORT}/{AI_DB_NAME}"
-)
-
-ai_engine = create_engine(AI_DATABASE_URL)
+ai_engine = PIPELINE_DB.create_engine()
 
 
 # ============================================================
@@ -93,6 +89,10 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"}
 def generate_document_id(file_path: Path) -> str:
     """
     Generate stable document ID using file name and file content.
+
+    This is content-derived, so the same file always produces the same id and a
+    modified file produces a new one. It is the basis of document_record_id and
+    therefore of the document's Qdrant point ID.
     """
     hasher = hashlib.sha256()
 
@@ -235,24 +235,43 @@ def build_document_record(file_path: Path, source_type: str) -> Dict:
         extracted_text=extracted_text,
     )
 
+    document_record_id = make_document_record_id(document_id)
+    source_file_path = str(file_path.relative_to(PROJECT_ROOT))
+
     document_json = {
+        "document_record_id": document_record_id,
         "document_id": document_id,
         "record_type": "erp_unstructured_document",
         "document_name": document_name,
         "document_type": document_type,
         "source_type": source_type,
-        "source_file_path": str(file_path.relative_to(PROJECT_ROOT)),
+        "source_file_path": source_file_path,
         "record_source": "bpi2020_erp_document_layer",
         "extraction_method": "pymupdf" if source_type == "pdf" else "tesseract_ocr",
         "extraction_result": extraction_result,
         "text_for_ai": text_for_ai,
     }
 
+    content_hash = compute_content_hash(
+        record_id=document_record_id,
+        text_for_ai=text_for_ai,
+        metadata={
+            "document_id": document_id,
+            "document_name": document_name,
+            "document_type": document_type,
+            "source_type": source_type,
+            "source_file_path": source_file_path,
+            "text_length": len(extracted_text),
+        },
+    )
+
     return {
+        "document_record_id": document_record_id,
+        "content_hash": content_hash,
         "document_id": document_id,
         "document_type": document_type,
         "document_name": document_name,
-        "source_file_path": str(file_path.relative_to(PROJECT_ROOT)),
+        "source_file_path": source_file_path,
         "extracted_text": extracted_text,
         "text_for_ai": text_for_ai,
         "document_json": document_json,
@@ -277,21 +296,35 @@ def save_document_outputs(records: List[Dict]) -> None:
     print(f"Saved JSONL: {jsonl_path}")
 
 
-def clear_existing_document_records():
-    """
-    Clear existing document records before rerun.
-    This keeps the prototype output clean and reproducible.
-    """
-    with ai_engine.begin() as connection:
-        connection.execute(text("DELETE FROM ai_ready_documents;"))
+def load_existing_document_hashes() -> Dict[str, Optional[str]]:
+    """Read the current document_record_id -> content_hash map."""
+    query = text("SELECT document_record_id, content_hash FROM ai_ready_documents")
+
+    with ai_engine.connect() as connection:
+        return {
+            row[0]: row[1]
+            for row in connection.execute(query)
+            if row[0] is not None
+        }
 
 
-def insert_document_records(records: List[Dict]) -> int:
+def upsert_document_records(records: List[Dict]) -> Dict[str, int]:
     """
-    Insert AI-ready document records into PostgreSQL.
+    UPSERT AI-ready document records into PostgreSQL.
+
+    Before Phase 0 the caller ran "DELETE FROM ai_ready_documents" immediately
+    before this statement, which made the ON CONFLICT clause unreachable: every
+    logical document was re-inserted and received a new SERIAL id on every run.
+    Files written by an earlier run then referenced ids that no longer existed.
+
+    The DELETE is gone. Identity now comes from the content-derived
+    document_record_id, and embedding_status is only invalidated when
+    content_hash actually changed.
     """
-    insert_sql = text("""
+    upsert_sql = text("""
         INSERT INTO ai_ready_documents (
+            document_record_id,
+            content_hash,
             document_id,
             document_type,
             document_name,
@@ -299,9 +332,12 @@ def insert_document_records(records: List[Dict]) -> int:
             extracted_text,
             text_for_ai,
             document_json,
-            embedding_status
+            embedding_status,
+            updated_at
         )
         VALUES (
+            :document_record_id,
+            :content_hash,
             :document_id,
             :document_type,
             :document_name,
@@ -309,26 +345,47 @@ def insert_document_records(records: List[Dict]) -> int:
             :extracted_text,
             :text_for_ai,
             CAST(:document_json AS JSONB),
-            'pending'
+            'pending',
+            CURRENT_TIMESTAMP
         )
         ON CONFLICT (document_id)
         DO UPDATE SET
+            document_record_id = EXCLUDED.document_record_id,
+            content_hash = EXCLUDED.content_hash,
             document_type = EXCLUDED.document_type,
             document_name = EXCLUDED.document_name,
             source_file_path = EXCLUDED.source_file_path,
             extracted_text = EXCLUDED.extracted_text,
             text_for_ai = EXCLUDED.text_for_ai,
             document_json = EXCLUDED.document_json,
-            embedding_status = 'pending'
+            updated_at = CURRENT_TIMESTAMP,
+            embedding_status = CASE
+                WHEN ai_ready_documents.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+                    THEN 'pending'
+                ELSE ai_ready_documents.embedding_status
+            END
     """)
 
-    inserted_count = 0
+    existing_hashes = load_existing_document_hashes()
+
+    stats = {"written": 0, "new": 0, "content_changed": 0, "content_unchanged": 0}
 
     with ai_engine.begin() as connection:
         for record in records:
+            document_record_id = record["document_record_id"]
+
+            if document_record_id not in existing_hashes:
+                stats["new"] += 1
+            elif existing_hashes[document_record_id] != record["content_hash"]:
+                stats["content_changed"] += 1
+            else:
+                stats["content_unchanged"] += 1
+
             connection.execute(
-                insert_sql,
+                upsert_sql,
                 {
+                    "document_record_id": document_record_id,
+                    "content_hash": record["content_hash"],
                     "document_id": record["document_id"],
                     "document_type": record["document_type"],
                     "document_name": record["document_name"],
@@ -339,9 +396,9 @@ def insert_document_records(records: List[Dict]) -> int:
                 },
             )
 
-            inserted_count += 1
+            stats["written"] += 1
 
-    return inserted_count
+    return stats
 
 
 def log_transformation(records_count: int, status: str, message: str):
@@ -420,8 +477,15 @@ def main():
     print(f"Image folder : {IMAGE_DIR}")
     print(f"Output folder: {OUTPUT_DIR}")
     print(f"Target table : ai_ready_documents")
+    print(f"Database     : {PIPELINE_DB.safe_target}")
+
+    print(f"\n{check_postgres(PIPELINE_DB, required_tables=('ai_ready_documents',))}")
 
     files = collect_files()
+
+    # OCR is only required when there is at least one image to process.
+    if any(item["source_type"] == "image" for item in files):
+        print(f"{check_tesseract()}")
 
     if not files:
         print("\nNo PDF or image files found.")
@@ -466,18 +530,27 @@ def main():
 
     save_document_outputs(records)
 
-    # For reproducible prototype runs.
-    clear_existing_document_records()
+    # Reproducible reruns come from stable identity plus UPSERT, not from
+    # deleting the table first.
+    stats = upsert_document_records(records)
 
-    inserted_count = insert_document_records(records)
+    print("\nUpsert summary")
+    print("-" * 50)
+    print(f"  Documents written : {stats['written']}")
+    print(f"  New documents     : {stats['new']}")
+    print(f"  Content changed   : {stats['content_changed']}")
+    print(f"  Content unchanged : {stats['content_unchanged']}")
 
     log_transformation(
-        records_count=inserted_count,
+        records_count=stats["written"],
         status="success",
-        message=f"Parsed and inserted {inserted_count} AI-ready document records.",
+        message=(
+            f"Upserted {stats['written']} AI-ready document records "
+            f"(new={stats['new']}, changed={stats['content_changed']}, "
+            f"unchanged={stats['content_unchanged']})."
+        ),
     )
 
-    print(f"\nInserted records into ai_ready_documents: {inserted_count}")
     print("\nBPI document/image parsing pipeline completed.")
 
 

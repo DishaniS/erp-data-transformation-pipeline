@@ -1,33 +1,24 @@
-import os
 import re
+import sys
 from pathlib import Path
 
 import pandas as pd
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-load_dotenv(PROJECT_ROOT / ".env")
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from bpi2020.common.config import PostgresSettings
+from bpi2020.common.health import check_postgres
 
 RAW_DIR = PROJECT_ROOT / "data" / "bpi2020" / "raw"
 LEGACY_RAW_DIR = PROJECT_ROOT / "data" / "raw"
 
-DB_HOST = os.getenv("BPI_OLD_DB_HOST", "localhost")
-DB_PORT = os.getenv("BPI_OLD_DB_PORT", "5432")
-DB_NAME = os.getenv("BPI_OLD_DB_NAME", "bpi2020_old_erp_db")
-DB_USER = os.getenv("BPI_OLD_DB_USER", "postgres")
-DB_PASSWORD = os.getenv("BPI_OLD_DB_PASSWORD")
+ERP_SOURCE_DB = PostgresSettings.erp_source()
 
-if not DB_PASSWORD:
-    raise ValueError("BPI_OLD_DB_PASSWORD is missing in .env file.")
-
-DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-
-engine = create_engine(DATABASE_URL)
+engine = ERP_SOURCE_DB.create_engine()
 
 
 DATASETS = {
@@ -112,6 +103,11 @@ def ensure_source_row_id(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add a stable sequential source row identifier for incremental sync when the
     source CSV does not already include one.
+
+    This value is the anchor of the whole downstream identity chain: every
+    cleaned event derives ``event:{system}:{entity}:{source_row_id}`` from it.
+    It is deterministic because it follows CSV row order, so re-importing the
+    same CSV reproduces exactly the same identifiers.
     """
     df = df.copy()
 
@@ -164,7 +160,18 @@ def import_dataset(csv_file: str, table_name: str):
 
 def main():
     print("Starting BPI 2020 raw CSV import into old ERP PostgreSQL database...")
+    print(f"Target database          : {ERP_SOURCE_DB.safe_target}")
     print(f"Preferred raw data folder: {RAW_DIR}")
+
+    print(f"\n{check_postgres(ERP_SOURCE_DB)}")
+
+    # to_sql(if_exists="replace") drops and recreates each raw table. That is
+    # intentional for a clean re-import from the source CSVs, and it is safe for
+    # downstream identity because source_row_id is reassigned deterministically
+    # from CSV row order. It does discard any manual edits made to these tables.
+    print("\nWARNING: this replaces the following tables in the source database:")
+    for table_name in DATASETS.values():
+        print(f"  - {table_name}")
 
     for csv_file, table_name in DATASETS.items():
         import_dataset(csv_file, table_name)

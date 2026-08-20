@@ -13,18 +13,32 @@ This script:
 3. Builds one structured AI-ready JSON document per ERP case.
 4. Creates a natural-language case_summary for later embedding/RAG.
 5. Saves AI-ready JSON/JSONL files.
-6. Inserts case-level records into ai_ready_cases.
+6. UPSERTs case-level records into ai_ready_cases keyed by case_record_id.
 7. Logs the transformation in transformation_logs.
+
+Identity behaviour (Phase 0)
+----------------------------
+Each case carries a deterministic ``case_record_id`` of the form
+``case:{process_type}:{normalized_case_id}``. Rebuilding is an UPSERT on that
+key rather than DELETE + INSERT, so:
+
+* a rerun on identical input creates no duplicates and changes no identity,
+* the ai_ready_cases.id SERIAL stays put instead of drifting on every run,
+* embedding_status is only reset to 'pending' when content_hash actually
+  changed, so unchanged cases keep their existing vector linkage.
+
+Rows for cases that no longer exist in cleaned_event_logs are removed by an
+explicit, reported prune step (disable it with --keep-obsolete).
 """
 
-import os
+import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 import pandas as pd
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 
 # ============================================================
@@ -32,28 +46,30 @@ from sqlalchemy import create_engine, text
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from bpi2020.common.config import PostgresSettings
+from bpi2020.common.health import check_postgres
+from bpi2020.common.stable_ids import compute_content_hash, make_case_record_id
+
 OUTPUT_DIR = PROJECT_ROOT / "data" / "bpi2020" / "ai_ready"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-load_dotenv(PROJECT_ROOT / ".env")
 
 
 # ============================================================
 # Database Configuration
 # ============================================================
 
-AI_DB_HOST = os.getenv("AI_DB_HOST", "localhost")
-AI_DB_PORT = os.getenv("AI_DB_PORT", "5432")
-AI_DB_NAME = os.getenv("AI_DB_NAME", "erp_ai_native_db")
-AI_DB_USER = os.getenv("AI_DB_USER", "postgres")
-AI_DB_PASSWORD = os.getenv("AI_DB_PASSWORD", "postgres")
+PIPELINE_DB = PostgresSettings.pipeline()
+AI_DB_NAME = PIPELINE_DB.database
 
-AI_DATABASE_URL = (
-    f"postgresql+psycopg2://{AI_DB_USER}:{AI_DB_PASSWORD}"
-    f"@{AI_DB_HOST}:{AI_DB_PORT}/{AI_DB_NAME}"
-)
+ai_engine = PIPELINE_DB.create_engine()
 
-ai_engine = create_engine(AI_DATABASE_URL)
+# Number of case rows sent per executemany batch. Case JSON documents are large
+# (tens of KB each), so the batch stays small to bound memory.
+UPSERT_BATCH_SIZE = 500
 
 
 # ============================================================
@@ -121,6 +137,11 @@ def clean_event_record(row: pd.Series) -> Dict[str, Any]:
     record_data = safe_json_load(row.get("record_data"))
 
     event = {
+        # Deterministic cross-layer identity of the event.
+        "event_record_id": make_json_safe(row.get("event_record_id")),
+        # Internal cleaned_event_logs SERIAL. Retained for traceability only.
+        # It is NOT an authoritative identifier: it changes whenever
+        # cleaned_event_logs is rebuilt, and it is excluded from content_hash.
         "event_id": int(row["id"]) if row.get("id") is not None else None,
         "activity": make_json_safe(row.get("normalized_activity")),
         "timestamp": safe_timestamp(row.get("event_timestamp")),
@@ -269,7 +290,10 @@ def build_case_document(group_df: pd.DataFrame) -> Dict[str, Any]:
         duration_days=duration_days,
     )
 
+    case_record_id = make_case_record_id(process_type, case_id)
+
     case_json = {
+        "case_record_id": case_record_id,
         "case_id": case_id,
         "process_type": process_type,
         "record_source": "bpi_challenge_2020",
@@ -285,7 +309,27 @@ def build_case_document(group_df: pd.DataFrame) -> Dict[str, Any]:
         "ai_text": case_summary,
     }
 
+    # The hash covers identity plus the AI-facing content and the metadata that
+    # reaches the vector payload. It deliberately excludes the per-event
+    # cleaned_event_logs SERIALs, so rebuilding cleaned_event_logs does not
+    # invalidate every case embedding.
+    content_hash = compute_content_hash(
+        record_id=case_record_id,
+        text_for_ai=case_summary,
+        metadata={
+            "case_id": case_id,
+            "process_type": process_type,
+            "total_events": total_events,
+            "start_timestamp": start_timestamp,
+            "end_timestamp": end_timestamp,
+            "duration_days": duration_days,
+            "activity_sequence": activity_sequence,
+        },
+    )
+
     return {
+        "case_record_id": case_record_id,
+        "content_hash": content_hash,
         "case_id": case_id,
         "process_type": process_type,
         "case_summary": case_summary,
@@ -314,12 +358,39 @@ def save_ai_ready_files(case_documents: List[Dict[str, Any]]) -> None:
     print(f"Saved AI-ready JSONL: {jsonl_path}")
 
 
-def insert_ai_ready_cases(case_documents: List[Dict[str, Any]]) -> int:
+def load_existing_case_hashes() -> Dict[str, Optional[str]]:
     """
-    Insert case-level AI-ready documents into ai_ready_cases table.
+    Read the current case_record_id -> content_hash map.
+
+    Used to report how many cases are new, changed, or unchanged, without
+    relying on the SERIAL primary key for anything.
     """
-    insert_sql = text("""
+    query = text("SELECT case_record_id, content_hash FROM ai_ready_cases")
+
+    with ai_engine.connect() as connection:
+        return {
+            row[0]: row[1]
+            for row in connection.execute(query)
+            if row[0] is not None
+        }
+
+
+def upsert_ai_ready_cases(case_documents: List[Dict[str, Any]]) -> Dict[str, int]:
+    """
+    UPSERT case-level AI-ready documents into ai_ready_cases.
+
+    Conflict target is the stable case_record_id, so a rerun on identical input
+    updates the same rows instead of deleting them and re-inserting with new
+    SERIAL values.
+
+    embedding_status is reset to 'pending' only when content_hash changed.
+    An unchanged case therefore keeps embedding_status = 'completed' and its
+    existing qdrant_point_id, which is what makes reruns cheap and safe.
+    """
+    upsert_sql = text("""
         INSERT INTO ai_ready_cases (
+            case_record_id,
+            content_hash,
             case_id,
             process_type,
             case_summary,
@@ -327,9 +398,12 @@ def insert_ai_ready_cases(case_documents: List[Dict[str, Any]]) -> int:
             total_events,
             start_timestamp,
             end_timestamp,
-            embedding_status
+            embedding_status,
+            updated_at
         )
         VALUES (
+            :case_record_id,
+            :content_hash,
             :case_id,
             :process_type,
             :case_summary,
@@ -337,32 +411,122 @@ def insert_ai_ready_cases(case_documents: List[Dict[str, Any]]) -> int:
             :total_events,
             :start_timestamp,
             :end_timestamp,
-            'pending'
+            'pending',
+            CURRENT_TIMESTAMP
         )
+        ON CONFLICT (case_record_id)
+        DO UPDATE SET
+            case_id = EXCLUDED.case_id,
+            process_type = EXCLUDED.process_type,
+            case_summary = EXCLUDED.case_summary,
+            case_json = EXCLUDED.case_json,
+            total_events = EXCLUDED.total_events,
+            start_timestamp = EXCLUDED.start_timestamp,
+            end_timestamp = EXCLUDED.end_timestamp,
+            content_hash = EXCLUDED.content_hash,
+            updated_at = CURRENT_TIMESTAMP,
+            embedding_status = CASE
+                WHEN ai_ready_cases.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+                    THEN 'pending'
+                ELSE ai_ready_cases.embedding_status
+            END
     """)
 
-    inserted_count = 0
+    existing_hashes = load_existing_case_hashes()
+
+    stats = {
+        "written": 0,
+        "new": 0,
+        "content_changed": 0,
+        "content_unchanged": 0,
+    }
+
+    batch: List[Dict[str, Any]] = []
 
     with ai_engine.begin() as connection:
-        connection.execute(text("DELETE FROM ai_ready_cases;"))
-
         for doc in case_documents:
-            connection.execute(
-                insert_sql,
+            case_record_id = doc["case_record_id"]
+
+            if case_record_id not in existing_hashes:
+                stats["new"] += 1
+            elif existing_hashes[case_record_id] != doc["content_hash"]:
+                stats["content_changed"] += 1
+            else:
+                stats["content_unchanged"] += 1
+
+            batch.append(
                 {
+                    "case_record_id": case_record_id,
+                    "content_hash": doc["content_hash"],
                     "case_id": doc["case_id"],
                     "process_type": doc["process_type"],
                     "case_summary": doc["case_summary"],
-                    "case_json": json.dumps(doc["case_json"], ensure_ascii=False, default=str),
+                    "case_json": json.dumps(
+                        doc["case_json"], ensure_ascii=False, default=str
+                    ),
                     "total_events": doc["total_events"],
                     "start_timestamp": doc["start_timestamp"],
                     "end_timestamp": doc["end_timestamp"],
-                },
+                }
             )
 
-            inserted_count += 1
+            if len(batch) >= UPSERT_BATCH_SIZE:
+                connection.execute(upsert_sql, batch)
+                stats["written"] += len(batch)
+                print(f"   Upserted {stats['written']}/{len(case_documents)} cases...")
+                batch = []
 
-    return inserted_count
+        if batch:
+            connection.execute(upsert_sql, batch)
+            stats["written"] += len(batch)
+
+    return stats
+
+
+def prune_obsolete_cases(case_documents: List[Dict[str, Any]]) -> int:
+    """
+    Delete ai_ready_cases rows whose case no longer exists in the source.
+
+    This replaces the old blanket "DELETE FROM ai_ready_cases". It is explicit,
+    scoped to genuinely obsolete rows, and reports exactly how many rows it
+    removed so a surprising number is visible instead of silent.
+    """
+    current_ids = [doc["case_record_id"] for doc in case_documents]
+
+    with ai_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TEMP TABLE current_case_ids (
+                    case_record_id TEXT PRIMARY KEY
+                ) ON COMMIT DROP
+                """
+            )
+        )
+
+        insert_sql = text(
+            "INSERT INTO current_case_ids (case_record_id) VALUES (:case_record_id)"
+        )
+        for start in range(0, len(current_ids), 5000):
+            chunk = current_ids[start : start + 5000]
+            connection.execute(
+                insert_sql, [{"case_record_id": value} for value in chunk]
+            )
+
+        result = connection.execute(
+            text(
+                """
+                DELETE FROM ai_ready_cases a
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM current_case_ids c
+                    WHERE c.case_record_id = a.case_record_id
+                )
+                """
+            )
+        )
+
+        return result.rowcount or 0
 
 
 def log_transformation(
@@ -417,15 +581,36 @@ def log_transformation(
 # Main pipeline
 # ============================================================
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build AI-ready ERP case records from cleaned_event_logs."
+    )
+    parser.add_argument(
+        "--keep-obsolete",
+        action="store_true",
+        help=(
+            "Keep ai_ready_cases rows whose case is no longer present in "
+            "cleaned_event_logs (default: remove them and report the count)."
+        ),
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
     print("\nStarting AI-ready case-building pipeline...")
     print(f"Source table : cleaned_event_logs")
     print(f"Target table : ai_ready_cases")
+    print(f"Database     : {PIPELINE_DB.safe_target}")
     print(f"Output folder: {OUTPUT_DIR}")
+
+    print(f"\n{check_postgres(PIPELINE_DB, required_tables=('cleaned_event_logs', 'ai_ready_cases'))}")
 
     query = """
         SELECT
             id,
+            event_record_id,
             source_table,
             process_type,
             normalized_case_id,
@@ -467,19 +652,58 @@ def main():
         if index % 1000 == 0:
             print(f"   Built {index}/{total_cases} case documents...")
 
+    duplicate_ids = _find_duplicate_case_record_ids(case_documents)
+    if duplicate_ids:
+        raise RuntimeError(
+            "Duplicate case_record_id values were generated in this run: "
+            f"{duplicate_ids[:5]} (total {len(duplicate_ids)}). "
+            "Stable case identity is not unique for this dataset; refusing to write."
+        )
+
     save_ai_ready_files(case_documents)
 
-    inserted_count = insert_ai_ready_cases(case_documents)
+    stats = upsert_ai_ready_cases(case_documents)
+
+    pruned_count = 0
+    if args.keep_obsolete:
+        print("\nSkipping obsolete-row prune (--keep-obsolete).")
+    else:
+        pruned_count = prune_obsolete_cases(case_documents)
+
+    print("\nUpsert summary")
+    print("-" * 50)
+    print(f"  Cases written        : {stats['written']}")
+    print(f"  New cases            : {stats['new']}")
+    print(f"  Content changed      : {stats['content_changed']}")
+    print(f"  Content unchanged    : {stats['content_unchanged']}")
+    print(f"  Obsolete rows pruned : {pruned_count}")
 
     log_transformation(
         input_count=input_count,
-        output_count=inserted_count,
+        output_count=stats["written"],
         status="success",
-        message=f"Built and inserted {inserted_count} AI-ready case-level documents.",
+        message=(
+            f"Upserted {stats['written']} AI-ready case documents "
+            f"(new={stats['new']}, changed={stats['content_changed']}, "
+            f"unchanged={stats['content_unchanged']}, pruned={pruned_count})."
+        ),
     )
 
-    print(f"\nInserted AI-ready cases into database: {inserted_count}")
     print("\nAI-ready case-building pipeline completed.")
+
+
+def _find_duplicate_case_record_ids(case_documents: List[Dict[str, Any]]) -> List[str]:
+    """Return case_record_id values produced more than once in this run."""
+    seen: set = set()
+    duplicates: List[str] = []
+
+    for doc in case_documents:
+        record_id = doc["case_record_id"]
+        if record_id in seen:
+            duplicates.append(record_id)
+        seen.add(record_id)
+
+    return duplicates
 
 
 if __name__ == "__main__":

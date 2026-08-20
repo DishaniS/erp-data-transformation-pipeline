@@ -16,11 +16,10 @@ Example queries:
     - Find delayed travel permit cases
 """
 
-import os
+import sys
 from pathlib import Path
 from typing import List, Dict, Any
 
-from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 
@@ -30,21 +29,21 @@ from qdrant_client import QdrantClient
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-load_dotenv(PROJECT_ROOT / ".env")
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from bpi2020.common.config import EmbeddingSettings, get_vector_collection
+from bpi2020.qdrant_connection import QdrantSettings
 
 
 # ============================================================
 # Config
 # ============================================================
 
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "bpi2020_erp_knowledge")
+QDRANT_COLLECTION = get_vector_collection()
 
-EMBEDDING_MODEL = os.getenv(
-    "EMBEDDING_MODEL",
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
+EMBEDDING_MODEL = EmbeddingSettings.from_env().model_id
 
 
 # ============================================================
@@ -57,8 +56,15 @@ def load_model() -> SentenceTransformer:
 
 
 def connect_qdrant() -> QdrantClient:
-    print(f"Connecting to Qdrant: {QDRANT_HOST}:{QDRANT_PORT}")
-    return QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+    settings = QdrantSettings.from_env()
+    print(f"Connecting to Qdrant: {settings.target}")
+    client = settings.create_client()
+    if not client.collection_exists(QDRANT_COLLECTION):
+        raise RuntimeError(
+            f"Qdrant collection '{QDRANT_COLLECTION}' does not exist. "
+            "Run generate_and_store_embeddings.py first."
+        )
+    return client
 
 
 def search_erp_knowledge(
@@ -92,6 +98,9 @@ def search_erp_knowledge(
 
         formatted_results.append({
             "score": result.score,
+            # Stable cross-layer key. This is what resolves the hit back to
+            # PostgreSQL; source_record_id is shown for traceability only.
+            "record_id": payload.get("record_id") or payload.get("unified_record_id"),
             "record_type": payload.get("record_type"),
             "title": payload.get("title"),
             "primary_reference": payload.get("primary_reference"),
@@ -118,6 +127,7 @@ def print_results(query: str, results: List[Dict[str, Any]]) -> None:
         print(f"\nResult {index}")
         print("-" * 100)
         print(f"Score            : {item.get('score'):.4f}")
+        print(f"Record ID        : {item.get('record_id')}")
         print(f"Record Type      : {item.get('record_type')}")
         print(f"Title            : {item.get('title')}")
         print(f"Primary Reference: {item.get('primary_reference')}")
@@ -193,9 +203,44 @@ def run_interactive_search():
 # ============================================================
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Semantic search over the BPI 2020 ERP knowledge base."
+    )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run the built-in demo queries without prompting.",
+    )
+    parser.add_argument(
+        "--query",
+        help="Run a single query non-interactively and exit.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Number of results per query (default: 5).",
+    )
+    args = parser.parse_args()
+
     print("\nBPI 2020 ERP Knowledge Semantic Search")
     print("=" * 80)
     print(f"Qdrant collection: {QDRANT_COLLECTION}")
+
+    if args.query:
+        model = load_model()
+        client = connect_qdrant()
+        print_results(
+            args.query,
+            search_erp_knowledge(args.query, model, client, limit=args.limit),
+        )
+        return
+
+    if args.demo:
+        run_demo_queries()
+        return
 
     mode = input("\nChoose mode: [1] demo queries  [2] interactive search: ").strip()
 
