@@ -271,3 +271,41 @@ Thumbs.db
 *.swo
 temp/
 tmp/
+
+# ----------------------------------------------------------------------
+# Deployment hardening: narrow exceptions to the broad *.json / *.csv rules
+# above. Those rules exist to keep company datasets and database exports out
+# of the repository, so they stay - only these specific repository assets are
+# re-included.
+# ----------------------------------------------------------------------
+
+# Research artifacts that substantiate the reported results.
+!artifacts/
+!artifacts/*.json
+
+# Small, synthetic test fixtures. Without these a fresh clone cannot run the
+# suite.
+!tests/fixtures/
+!tests/fixtures/**/*.csv
+!tests/fixtures/**/*.json
+!tests/fixtures/**/*.yaml
+!tests/fixtures/**/*.yml
+
+# Frontend build definition. These are source, not data: without them a fresh
+# clone cannot run `npm ci` and the frontend cannot be built at all. Named
+# individually rather than un-ignoring frontend/*.json, so a stray data export
+# dropped into frontend/ is still caught by the broad rule above.
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
+
+# ...but not the TypeScript incremental build cache, which is generated output.
+frontend/tsconfig.tsbuildinfo
+
+# Runtime data that must NEVER be committed.
+var/
+uploads/
+cold-archive/
+*.erpcold
+data/raw/
+data/bpi2020/

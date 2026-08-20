@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "erp-data-transformation-pipeline"
+version = "0.13.0"
+description = "ERP-Aware Data Transformation Pipeline (SLIIT R26-SE-034)"
+requires-python = ">=3.11"
+
+# Runtime dependencies are pinned in requirements.txt, which remains the
+# source of truth for this research environment. They are not duplicated here:
+# two dependency lists guarantee that one of them eventually goes stale.
+dependencies = []
+
+[project.scripts]
+# The documented startup commands, available once the project is installed.
+erp-api = "erp_pipeline.runtime.application:run"
+erp-bootstrap = "erp_pipeline.runtime.bootstrap:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["erp_pipeline*", "erp_integrations*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
