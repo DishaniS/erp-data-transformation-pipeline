@@ -1,0 +1,171 @@
+/* One screen: a title, a subtitle, and a card holding two upload boxes. */
+
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --border: #d8dde5;
+  --border-strong: #b9c1cd;
+  --text: #1a2029;
+  --muted: #5d6b7f;
+  --faint: #8a97a8;
+  --accent: #1f5fa8;
+  --accent-soft: #eef4fb;
+  --ok: #1d7a4d;
+  --bad: #a72b2b;
+  --radius: 6px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+h1 {
+  font-size: 21px;
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+
+.card h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+/* Side by side on a desktop; stacked once there is no room. */
+.upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.upload-slot {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: #fbfcfd;
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dropzone:hover {
+  border-color: var(--faint);
+}
+
+/* Subtle, so dragging is obvious without the layout moving. */
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropzone:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dropzone[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.dropzone-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.dropzone-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* Feedback sits directly under its own box, never in a dialog. */
+.upload-status {
+  min-height: 20px;
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+
+.status.uploading {
+  color: var(--muted);
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.error {
+  color: var(--bad);
+}
+
+.tip {
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.tip code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: #f2f4f7;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Hidden from sight, still reachable by keyboard and screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 14px 40px;
+  }
+}

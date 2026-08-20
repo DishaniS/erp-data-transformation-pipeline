@@ -1,0 +1,370 @@
+{
+  "artifact": "phase12_storage_benchmark",
+  "claim_safety": {
+    "estimated": [
+      "cost resource multipliers (experimental assumptions)"
+    ],
+    "measured": [
+      "cold archive bytes on disk",
+      "cold compression ratio",
+      "all latency samples",
+      "recall against declared labels",
+      "warm int8 quantization read back from the server",
+      "cold rehydration fidelity"
+    ],
+    "not_claimed": [
+      "monetary savings",
+      "production-scale performance",
+      "generalization beyond this corpus and this model",
+      "that cold latency is comparable to hot or warm search latency"
+    ],
+    "proxy": [
+      "hot, warm and cold vector payload bytes (formula stated)"
+    ]
+  },
+  "corpus": {
+    "dimension": 384,
+    "embedding_seconds": 5.23,
+    "entity_types": [
+      "customer",
+      "expense",
+      "invoice",
+      "payment",
+      "purchase_order"
+    ],
+    "identical_corpus_in_every_tier": true,
+    "record_count": 500,
+    "vectors_are_real_model_output": true
+  },
+  "cost": {
+    "disclaimer": "normalized units, not currency; the multipliers are stated assumptions a reader may replace",
+    "model": {
+      "assumptions": [
+        "The multipliers are EXPERIMENTAL ASSUMPTIONS, not prices and not measurements.",
+        "They are ordinal (HOT > WARM > COLD) and deliberately round.",
+        "No cloud tariff, vendor quote or currency is implied anywhere.",
+        "Substituting different multipliers changes the cost figures and nothing else; the measured bytes and latencies stand on their own."
+      ],
+      "basis": "VECTOR_PAYLOAD_PROXY bytes, so all three tiers are comparable",
+      "formula": "normalized_cost = storage_bytes x resource_multiplier",
+      "multiplier_rationale": {
+        "cold": "encrypted files at rest; no index, no process and no memory until a rehydration is requested",
+        "hot": "full-precision vectors held in RAM by a continuously running search service; the most expensive resource per byte",
+        "warm": "vectors on disk with an int8 quantized copy used for search; served by the same process but outside the RAM budget"
+      },
+      "resource_multipliers": {
+        "cold": 0.05,
+        "hot": 1.0,
+        "warm": 0.4
+      }
+    },
+    "per_tier": {
+      "cold": {
+        "cost_per_record": 76.8,
+        "normalized_cost": 38400.0,
+        "record_count": 500,
+        "resource_multiplier": 0.05,
+        "storage_bytes": 768000.0,
+        "storage_measurement": "proxy",
+        "tier": "cold"
+      },
+      "hot": {
+        "cost_per_record": 1536.0,
+        "normalized_cost": 768000.0,
+        "record_count": 500,
+        "resource_multiplier": 1.0,
+        "storage_bytes": 768000.0,
+        "storage_measurement": "proxy",
+        "tier": "hot"
+      },
+      "warm": {
+        "cost_per_record": 153.6,
+        "normalized_cost": 76800.0,
+        "record_count": 500,
+        "resource_multiplier": 0.4,
+        "storage_bytes": 192000.0,
+        "storage_measurement": "proxy",
+        "tier": "warm"
+      }
+    },
+    "relative_to_hot": {
+      "cold": 0.05,
+      "hot": 1.0,
+      "warm": 0.1
+    }
+  },
+  "dataset": {
+    "identical_across_tiers": true,
+    "per_tier": {
+      "cold": {
+        "dataset_size": 500,
+        "query_count": 40
+      },
+      "hot": {
+        "dataset_size": 500,
+        "query_count": 40
+      },
+      "warm": {
+        "dataset_size": 500,
+        "query_count": 40
+      }
+    },
+    "query_count": 40,
+    "size": 500
+  },
+  "duration_seconds": 81.46,
+  "embedding_model": {
+    "dimension": 384,
+    "library_version": "5.6.1",
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "normalizes_output": true
+  },
+  "environment": {
+    "collections_used": [
+      "erp_phase12_bench_hot",
+      "erp_phase12_bench_warm",
+      "erp_phase12_bench_cold_rehydrated"
+    ],
+    "external_services": [],
+    "llm_calls": 0,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "production_collections_touched": [],
+    "python": "3.13.9",
+    "qdrant_host": "localhost:6333"
+  },
+  "footprint": {
+    "cold_archive_measured": {
+      "bytes_per_record": 4644.12,
+      "bytes_total": 2322058.0,
+      "detail": {
+        "compression": "gzip",
+        "encryption": "AES-256-GCM",
+        "format_version": "1.0",
+        "root": "C:\\Users\\user\\AppData\\Local\\Temp\\erp_phase12_bench_cold_mqn2eysg"
+      },
+      "measurement": "measured",
+      "method": "sum of on-disk archive file sizes (stat.st_size); includes the plaintext header, nonce, GCM tag and payload metadata, excludes the encryption key which is not stored here",
+      "record_count": 500,
+      "tier": "cold"
+    },
+    "comparability_warning": "comparable_proxy counts vector components only and is the ONLY cross-tier comparable figure. cold_archive_measured covers a different scope (header, nonce, GCM tag, compressed metadata) and must never be subtracted from or divided by the proxy.",
+    "comparable_proxy": {
+      "cold": {
+        "bytes_per_record": 1536.0,
+        "bytes_total": 768000.0,
+        "detail": {
+          "bytes_per_component": 4,
+          "dimension": 384,
+          "quantized": false,
+          "scope": "vector components only"
+        },
+        "measurement": "proxy",
+        "method": "VECTOR_PAYLOAD_PROXY: record_count x 384 x 4 bytes (float32); vector components only, excluding index structures, payloads and container overhead",
+        "record_count": 500,
+        "tier": "cold"
+      },
+      "hot": {
+        "bytes_per_record": 1536.0,
+        "bytes_total": 768000.0,
+        "detail": {
+          "bytes_per_component": 4,
+          "dimension": 384,
+          "quantized": false,
+          "scope": "vector components only"
+        },
+        "measurement": "proxy",
+        "method": "VECTOR_PAYLOAD_PROXY: record_count x 384 x 4 bytes (float32); vector components only, excluding index structures, payloads and container overhead",
+        "record_count": 500,
+        "tier": "hot"
+      },
+      "warm": {
+        "bytes_per_record": 384.0,
+        "bytes_total": 192000.0,
+        "detail": {
+          "bytes_per_component": 1,
+          "dimension": 384,
+          "quantized": true,
+          "scope": "vector components only"
+        },
+        "measurement": "proxy",
+        "method": "VECTOR_PAYLOAD_PROXY: record_count x 384 x 1 bytes (int8); vector components only, excluding index structures, payloads and container overhead",
+        "record_count": 500,
+        "tier": "warm"
+      }
+    }
+  },
+  "generated_at": "2026-08-14T15:41:57.629053+00:00",
+  "latency": {
+    "cold_post_rehydration_search": {
+      "label": "cold_post_rehydration_search",
+      "mean_ms": 16.2978,
+      "measurements": 40,
+      "median_ms": 15.3532,
+      "min_ms": 6.645,
+      "p95_available": true,
+      "p95_ms": 34.9939
+    },
+    "cold_rehydration": {
+      "archive_bytes_read": 2322058,
+      "archive_read_time_ms": 103.0645,
+      "archive_records": 500,
+      "decrypt_decompress_deserialize_time_ms": 255.8808,
+      "decrypt_time_measurement": "DERIVED",
+      "decrypt_time_method": "full rehydrate elapsed minus the pure archive-read elapsed over the same 500 files. The page cache is warmed by an untimed pass beforehand so both terms see the same cache state and the difference reflects decrypt/decompress/deserialize work rather than I/O asymmetry",
+      "definition": "rehydration_total_ms = full rehydrate (read + decrypt + decompress + deserialize) + temporary index population",
+      "full_rehydrate_time_ms": 358.9453,
+      "rehydration_per_record_ms": 18.6714,
+      "rehydration_total_ms": 9335.6881,
+      "temporary_index_population_time_ms": 8976.7428
+    },
+    "cold_single_rehydration": {
+      "label": "cold_single_rehydration",
+      "mean_ms": 15.4555,
+      "measurements": 40,
+      "median_ms": 14.7328,
+      "min_ms": 0.9921,
+      "p95_available": true,
+      "p95_ms": 23.4524
+    },
+    "hot_search": {
+      "label": "hot_search",
+      "mean_ms": 12.2485,
+      "measurements": 40,
+      "median_ms": 11.0098,
+      "min_ms": 6.2804,
+      "p95_available": true,
+      "p95_ms": 24.5065
+    },
+    "note": "cold_single_rehydration is one record fetched by id, NOT a similarity search. cold_post_rehydration_search IS a real similarity search over the same 500 vectors and the same 40 queries, but it is only reachable after paying the one-time rehydration cost, so it is not equivalent to an always-online ANN query",
+    "total_cold_access_latency": {
+      "definition": "one-time rehydration_total_ms + per-query cold_post_rehydration_search median; the first term is amortised across every query served from the rehydrated index and is NOT paid per query",
+      "first_query_ms": 9351.0413,
+      "one_time_preparation_ms": 9335.6881,
+      "per_query_after_preparation_ms": 15.3532
+    },
+    "warm_search": {
+      "label": "warm_search",
+      "mean_ms": 18.2924,
+      "measurements": 40,
+      "median_ms": 16.4469,
+      "min_ms": 7.0142,
+      "p95_available": true,
+      "p95_ms": 33.203
+    }
+  },
+  "movement": {
+    "cold_to_warm_ms_per_vector": 33.4803,
+    "cold_to_warm_total_seconds": 3.348,
+    "vector_count": 100,
+    "warm_to_cold_ms_per_vector": 2.1466,
+    "warm_to_cold_total_seconds": 0.215
+  },
+  "phase": 12,
+  "queries": {
+    "count": 40,
+    "examples": [
+      {
+        "expected": "ai:invoice:bench-00001",
+        "query": "invoice INV-00001 for customer CUS-0001 approved LKR"
+      },
+      {
+        "expected": "ai:payment:bench-00013",
+        "query": "payment PAY-00013 settling invoice INV-00085 by bank transfer"
+      },
+      {
+        "expected": "ai:expense:bench-00025",
+        "query": "expense claim EXP-00025 for conference on the supplier factory inspection"
+      },
+      {
+        "expected": "ai:customer:bench-00037",
+        "query": "customer Customer named Beta Supplies based in Sri Lanka"
+      },
+      {
+        "expected": "ai:purchase_order:bench-00049",
+        "query": "purchase order PO-00049 raised on supplier SUP-0087 settled"
+      }
+    ],
+    "ground_truth": "hand-declared labels, not another tier's ranking"
+  },
+  "recall": {
+    "cold": {
+      "label": "cold",
+      "query_count": 40,
+      "recall_at_1": 0.15,
+      "recall_at_3": 0.475,
+      "recall_at_5": 0.55
+    },
+    "cold_hot_top5_overlap": 1.0,
+    "cold_retrieval_model": "the encrypted archive corpus is rehydrated into an isolated temporary Qdrant collection and the same 40 queries are run against it; encrypted files are never searched in place",
+    "cold_vector_roundtrip": {
+      "lossless": true,
+      "max_component_deviation": 0.0,
+      "note": "numerical integrity of serialize -> compress -> encrypt -> decrypt -> decompress -> deserialize. This is a separate property from retrieval quality and does not substitute for the measured recall above"
+    },
+    "hot": {
+      "label": "hot",
+      "query_count": 40,
+      "recall_at_1": 0.15,
+      "recall_at_3": 0.475,
+      "recall_at_5": 0.55
+    },
+    "hot_warm_top5_overlap": 1.0,
+    "overlap_note": "a diagnostic of how much int8 quantization perturbed the ranking; it is not a quality metric",
+    "warm": {
+      "label": "warm",
+      "query_count": 40,
+      "recall_at_1": 0.15,
+      "recall_at_3": 0.475,
+      "recall_at_5": 0.55
+    }
+  },
+  "routing": {
+    "contexts_evaluated": 500,
+    "distribution": {
+      "cold": 177,
+      "hot": 158,
+      "warm": 165
+    },
+    "policy_id": "erp_hybrid_default",
+    "policy_version": "1.0",
+    "reason_codes": {
+      "age_demotion": 112,
+      "initial_placement": 158,
+      "low_access_demotion": 230
+    },
+    "restricted_invariant_held": true,
+    "restricted_kept_on_premises": 46,
+    "restricted_records": 46
+  },
+  "storage_engine_version": "1.0",
+  "tier_configuration": {
+    "cold": {
+      "compression": "gzip level 9",
+      "encryption": "AES-256-GCM",
+      "format_version": "1.0",
+      "key_source": "injected provider; never persisted beside archives"
+    },
+    "hot": {
+      "collection": "erp_phase12_bench_hot",
+      "distance": "Cosine",
+      "on_disk": false,
+      "points_count": 500,
+      "quantization": null,
+      "size": 384
+    },
+    "warm": {
+      "collection": "erp_phase12_bench_warm",
+      "distance": "Cosine",
+      "on_disk": true,
+      "points_count": 500,
+      "quantization": {
+        "always_ram": false,
+        "kind": "scalar",
+        "quantile": 0.99,
+        "type": "ScalarType.INT8"
+      },
+      "size": 384
+    },
+    "warm_quantization_server_verified": true
+  }
+}
