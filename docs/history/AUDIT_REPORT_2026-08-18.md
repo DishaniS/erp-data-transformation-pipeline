@@ -1,3 +1,26 @@
+> ## HISTORICAL DOCUMENT — DO NOT READ AS CURRENT STATUS
+>
+> This audit describes the repository as it stood on **2026-08-18** at commit
+> `d1d5f33`, before the framework was committed to version control and before
+> the architecture consolidation.
+>
+> **Superseded by `IT22267290_FULL_CODEBASE_RESEARCH_AUDIT.md`** (2026-08-21),
+> and further overtaken by
+> `docs/architecture/ARCHITECTURE_CONSOLIDATION_REPORT.md`.
+>
+> Two of its findings are now resolved and must not be quoted as current:
+>
+> * *"96.9% of the Python source is not in version control"* — resolved. The
+>   entire framework, test suite, documentation and artifacts were committed on
+>   2026-08-20.
+> * *"two different codebases in one repository"* — resolved. `src/bpi2020/`
+>   and `src/erp_integrations/` were consolidated into `src/erp_pipeline/`;
+>   BPI Challenge 2020 is now a dataset only.
+>
+> Preserved unaltered below for architecture and research history.
+
+---
+
 # Forensic Audit — ERP-Aware Data Transformation Pipeline
 
 **Repository:** `C:\research\erp-data-transformation-pipeline`

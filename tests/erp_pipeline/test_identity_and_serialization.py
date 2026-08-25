@@ -1,18 +1,27 @@
-"""Identity rules, serialization guarantees, and Phase 0 compatibility.
+"""Identity rules, serialization guarantees, and normalization stability.
 
-The compatibility tests import BOTH ``bpi2020.common.stable_ids`` and
-``erp_pipeline.schemas.identity`` to prove the two packages agree on identity
-principles. Only the tests do this: the ``erp_pipeline`` package itself never
-imports ``bpi2020``, so the framework carries no dependency on the prototype.
+HISTORY
+-------
+These tests once imported ``bpi2020.common.stable_ids`` alongside
+``erp_pipeline.schemas.identity`` to prove the framework and the dataset
+prototype agreed on identity. The prototype has been consolidated away, so
+there is no second implementation left to compare against.
+
+Comparing the algorithm against a FROZEN CORPUS instead is strictly stronger.
+An agreement test only proved the two implementations were the same as each
+other - they could have drifted together. The corpus below pins the exact
+output byte-for-byte, so any change to ``normalize_identifier`` fails loudly,
+which matters because changing it silently re-identifies every stored record
+and orphans every derived vector.
+
+The boundary tests further down are kept deliberately: they still guard
+against a dataset package being reintroduced into the framework.
 """
 
 import uuid
 
 import pytest
 
-# Phase 0 (protected baseline)
-from bpi2020.common import stable_ids as phase0
-# Phase 1 (new generic framework)
 from erp_pipeline.schemas import identity as phase1
 from erp_pipeline.schemas import (
     CANONICAL_MODEL_VERSION,
@@ -52,64 +61,90 @@ NORMALIZATION_CORPUS = [
 
 
 # ============================================================
-# Phase 0 <-> Phase 1 compatibility
+# Normalization stability (frozen corpus)
 # ============================================================
 
+#: The exact output ``normalize_identifier`` must produce, pinned literally.
+#: Changing this function re-identifies every stored record and orphans every
+#: derived vector, so it is a MAJOR contract change and must never happen by
+#: accident. These expectations were carried over unchanged from the identity
+#: contract the dataset prototype established.
+FROZEN_NORMALIZATION = [
+    ("declaration 100000", "declaration_100000"),
+    ("travel permit 76455", "travel_permit_76455"),
+    ("Request For Payment 73550", "request_for_payment_73550"),
+    ("INV-001", "inv-001"),
+    ("_id", "id"),
+    ("  padded  value  ", "padded_value"),
+    ("weird/chars*here", "weird_chars_here"),
+    ("Fin.Invoice", "fin.invoice"),
+    ("UPPER_CASE_NAME", "upper_case_name"),
+    ("multiple___underscores", "multiple_underscores"),
+    ("trailing___", "trailing"),
+    ("___leading", "leading"),
+    ("tab\tseparated", "tab_separated"),
+    ("new\nline", "new_line"),
+    ("café_münchen", "caf_m_nchen"),
+    ("12345", "12345"),
+    ("a:b:c", "a_b_c"),
+    ("erp:sys:invoice:1", "erp_sys_invoice_1"),
+]
+
+
+@pytest.mark.parametrize("raw,expected", FROZEN_NORMALIZATION)
+def test_normalization_output_is_frozen(raw, expected):
+    """Pins the algorithm byte-for-byte against a literal expectation.
+
+    Stronger than the agreement test this replaced: two implementations
+    compared against each other could have drifted together, whereas a literal
+    expectation cannot.
+    """
+    assert phase1.normalize_identifier(raw) == expected
+
+
 @pytest.mark.parametrize("value", NORMALIZATION_CORPUS)
-def test_normalization_matches_phase0_byte_for_byte(value):
-    """Both packages must normalize identically or ids would silently diverge."""
-    assert phase1.normalize_identifier(value) == phase0.normalize_key_component(value)
+def test_normalization_never_emits_the_id_separator(value):
+    """What makes ``parse_canonical_id`` unambiguous."""
+    assert phase1.CANONICAL_ID_SEPARATOR not in phase1.normalize_identifier(value)
 
 
 @pytest.mark.parametrize("value", [None, "", "   ", "___", "***"])
-def test_both_packages_reject_the_same_unusable_values(value):
-    with pytest.raises(phase0.StableIdError):
-        phase0.normalize_key_component(value)
-
+def test_unusable_values_are_refused_rather_than_silently_emptied(value):
     with pytest.raises(IdentityError):
         phase1.normalize_identifier(value)
 
 
-def test_uuid_derivation_uses_the_same_algorithm_as_phase0():
-    """Same algorithm (uuid5 over NAMESPACE_URL), different namespace prefix."""
-    record_id = "case:domestic_declarations:declaration_100000"
+def test_uuid_derivation_is_uuid5_over_the_url_namespace():
+    """The derivation an external vector store depends on."""
+    record_id = "erp:finance_erp_pg:invoice:inv-001"
+    derived = phase1.make_deterministic_uuid(record_id)
 
-    phase0_uuid = phase0.make_qdrant_point_id(record_id)
-    phase1_uuid = phase1.make_deterministic_uuid(record_id, namespace_prefix="bpi2020")
+    assert derived == str(
+        uuid.uuid5(
+            uuid.NAMESPACE_URL, f"{phase1.UUID_NAMESPACE_PREFIX}/{record_id}"
+        )
+    )
+    assert uuid.UUID(derived).version == 5
 
-    # Given the same prefix, the two derivations are identical.
-    assert phase1_uuid == phase0_uuid
-    assert uuid.UUID(phase1_uuid).version == 5
 
+def test_uuid_derivation_is_namespaced():
+    """Two namespaces must never map the same string to the same UUID, or two
+    deployments sharing a vector store would collide."""
+    record_id = "erp:finance_erp_pg:invoice:inv-001"
 
-def test_default_namespaces_keep_the_two_id_spaces_apart():
-    """The same string must not map to the same UUID in both packages."""
-    record_id = "case:domestic_declarations:declaration_100000"
-
-    assert phase1.make_deterministic_uuid(record_id) != phase0.make_qdrant_point_id(
-        record_id
+    assert phase1.make_deterministic_uuid(record_id) != (
+        phase1.make_deterministic_uuid(record_id, namespace_prefix="other")
     )
 
 
-def test_phase0_and_phase1_id_namespaces_cannot_collide():
-    """Phase 0 ids start with event:/case:/document:, Phase 1 ids with erp:."""
-    phase0_ids = [
-        phase0.make_event_record_id("domestic_declarations_raw", 1),
-        phase0.make_case_record_id("domestic_declarations", "declaration 100000"),
-        phase0.make_document_record_id("a102d03b6986f92816520534"),
-    ]
-    phase1_ids = [
+def test_every_canonical_id_carries_the_canonical_prefix():
+    identifiers = [
         phase1.make_canonical_record_id("finance_erp_pg", "invoice", "INV-001"),
         phase1.make_canonical_document_id("policy_library", "a102d03b"),
     ]
 
-    for identifier in phase0_ids:
-        assert not identifier.startswith(f"{phase1.CANONICAL_ID_PREFIX}:")
-
-    for identifier in phase1_ids:
+    for identifier in identifiers:
         assert identifier.startswith(f"{phase1.CANONICAL_ID_PREFIX}:")
-
-    assert not (set(phase0_ids) & set(phase1_ids))
 
 
 def test_erp_pipeline_has_no_bpi2020_import_statement():
@@ -212,23 +247,37 @@ def test_erp_pipeline_schemas_imports_no_third_party_package():
     assert offenders == [], f"unexpected third-party imports: {offenders}"
 
 
-def test_content_hash_shares_phase0_properties():
-    """Different envelopes by design, but the same determinism guarantees."""
-    phase0_hash = phase0.compute_content_hash("r1", "text", {"b": 2, "a": 1})
-    phase1_hash = phase1.compute_content_hash("r1", {"b": 2, "a": 1}, "text")
+def test_content_hash_is_a_sha256_hex_digest():
+    digest = phase1.compute_content_hash("r1", {"b": 2, "a": 1}, "text")
 
-    # Both are SHA-256 hex digests.
-    for digest in (phase0_hash, phase1_hash):
-        assert len(digest) == 64
-        int(digest, 16)
+    assert len(digest) == 64
+    int(digest, 16)
 
-    # Both are key-order independent and None-insensitive.
-    assert phase0_hash == phase0.compute_content_hash(
-        "r1", "text", {"a": 1, "b": 2, "c": None}
-    )
-    assert phase1_hash == phase1.compute_content_hash(
-        "r1", {"a": 1, "b": 2, "c": None}, "text"
-    )
+
+def test_content_hash_is_key_order_independent():
+    """Two records built in a different order are the same record."""
+    assert phase1.compute_content_hash(
+        "r1", {"b": 2, "a": 1}, "text"
+    ) == phase1.compute_content_hash("r1", {"a": 1, "b": 2}, "text")
+
+
+def test_content_hash_treats_absent_and_null_alike():
+    """Otherwise adding an empty optional field would re-embed the record."""
+    assert phase1.compute_content_hash(
+        "r1", {"a": 1}, "text"
+    ) == phase1.compute_content_hash("r1", {"a": 1, "c": None}, "text")
+
+
+def test_content_hash_changes_when_the_ai_text_changes():
+    assert phase1.compute_content_hash(
+        "r1", {"a": 1}, "text"
+    ) != phase1.compute_content_hash("r1", {"a": 1}, "different text")
+
+
+def test_content_hash_changes_when_the_content_changes():
+    assert phase1.compute_content_hash(
+        "r1", {"a": 1}, "text"
+    ) != phase1.compute_content_hash("r1", {"a": 2}, "text")
 
 
 # ============================================================
