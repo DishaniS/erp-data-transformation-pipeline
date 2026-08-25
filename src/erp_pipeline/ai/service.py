@@ -1,31 +1,3 @@
-"""The public Phase 11 entry point: representations in, embeddings out.
-
-    service = EmbeddingService(model)
-
-    record   = service.embed_one(representation)
-    summary  = service.embed_many(representations)          # iterable, batched
-    summary  = service.embed_and_store(representations, store)
-
-WHAT DECIDES WHETHER TO EMBED (Step 24)
----------------------------------------
-Three inputs, in this order::
-
-    force               -> embed
-    no previous record  -> embed
-    content_hash moved  -> embed
-    model changed       -> embed          (even when the content is identical)
-    otherwise           -> SKIPPED_UNCHANGED
-
-The model check matters and is easy to forget: a vector produced by a different
-model is not comparable with the rest of the index, however unchanged its source
-content is.
-
-STREAMING (Step 23)
--------------------
-``embed_many`` consumes an ITERABLE and materializes only one batch at a time.
-A 33,000-case corpus is processed in ``batch_size`` slices, never as one list.
-"""
-
 from __future__ import annotations
 
 import time
@@ -70,6 +42,42 @@ def _batched(
     if batch:
         yield batch
 
+CARRIED_IDENTITY_KEYS: tuple[str, ...] = (
+    "canonical_record_id",
+    "source_system_id",
+    "source_type",
+    "source_entity",
+    "sensitivity",
+    "document_id",
+    "record_type",
+    "content_kind",
+    "parent_record_id",
+    "source_field",
+    "business_key_name",
+    "business_key_value",
+    "document_type",
+    "page_start",
+    "page_end",
+    "chunk_index",
+    "schema_name",
+    "entity_kind",
+    "schema_id",
+    "schema_version",
+    "entity_id",
+    "schema_chunk_index",
+)
+
+
+def _carried_identity(representation: AIRepresentation) -> dict[str, Any]:
+    """The identity subset of a representation's metadata, absent keys omitted."""
+    metadata = representation.metadata or {}
+
+    return {
+        key: metadata[key]
+        for key in CARRIED_IDENTITY_KEYS
+        if metadata.get(key) is not None
+    }
+
 
 class EmbeddingService:
     """Turns AI-ready representations into embeddings, in batches."""
@@ -108,9 +116,6 @@ class EmbeddingService:
             model_id=self._model.model_id, dimension=self._model.dimension
         )
 
-    # ------------------------------------------------------------
-    # Decisions
-    # ------------------------------------------------------------
 
     def is_current(
         self,
@@ -141,10 +146,6 @@ class EmbeddingService:
 
         return True
 
-    # ------------------------------------------------------------
-    # One representation
-    # ------------------------------------------------------------
-
     def embed_one(
         self,
         representation: AIRepresentation,
@@ -152,10 +153,6 @@ class EmbeddingService:
     ) -> EmbeddingRecord:
         """Embed a single representation, or explain why it was not embedded."""
         return self._finish_batch([representation], [previous])[0]
-
-    # ------------------------------------------------------------
-    # Many representations
-    # ------------------------------------------------------------
 
     def embed_many(
         self,
@@ -226,10 +223,6 @@ class EmbeddingService:
         """Embed and hand every produced vector to a store."""
         return self.embed_many(representations, previous=previous, store=store)
 
-    # ------------------------------------------------------------
-    # Batch mechanics
-    # ------------------------------------------------------------
-
     def _finish_batch(
         self,
         batch: Sequence[AIRepresentation],
@@ -243,8 +236,6 @@ class EmbeddingService:
             text = (representation.text_for_ai or "").strip()
 
             if len(text) < max(1, self._options.min_content_characters):
-                # An embedding of nothing is a valid vector pointing nowhere;
-                # storing one would quietly pollute retrieval (Step 27).
                 results[index] = self._record(
                     representation,
                     EmbeddingStatus.EMPTY_CONTENT,
@@ -344,7 +335,10 @@ class EmbeddingService:
             status=status,
             vector=tuple(float(value) for value in vector) if vector else None,
             reason=reason,
-            metadata={"engine_version": AI_ENGINE_VERSION},
+            metadata={
+                "engine_version": AI_ENGINE_VERSION,
+                **_carried_identity(representation),
+            },
         )
 
 

@@ -30,8 +30,10 @@ from erp_pipeline.api.routers import (
     health_router,
     sources_router,
 )
+from erp_pipeline.api.routers_adaptation import responses_router
 from erp_pipeline.api.routers_data import (
     files_router,
+    representations_router,
     jobs_router,
     mappings_router,
     records_router,
@@ -228,6 +230,8 @@ def create_app(
         jobs_router,
         search_router,
         records_router,
+        representations_router,
+        responses_router,
     ):
         app.include_router(router)
 
@@ -269,9 +273,20 @@ def build_services(
         services.storage = StorageService()
 
     if engine is not None:
-        from erp_pipeline.orchestration import PostgresCanonicalRecordStore
+        from erp_pipeline.orchestration import (
+            PostgresCanonicalRecordStore,
+            PostgresRepresentationStore,
+        )
 
         services.records = PostgresCanonicalRecordStore(engine)
+        services.representations = PostgresRepresentationStore(engine)
+    else:
+        # No database configured. An in-memory store keeps representation
+        # resolution WORKING for this process rather than silently absent -
+        # the same trade the upload and source registries already make.
+        from erp_pipeline.orchestration import InMemoryRepresentationStore
+
+        services.representations = InMemoryRepresentationStore()
 
     return services
 

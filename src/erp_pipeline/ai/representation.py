@@ -37,6 +37,11 @@ from erp_pipeline.ai.models import (
     make_representation_id,
 )
 from erp_pipeline.schemas.canonical_models import CanonicalRecord
+from erp_pipeline.schemas.enums import ContentKind
+from erp_pipeline.transformation.source_native import (
+    BUSINESS_KEY_NAME,
+    BUSINESS_KEY_VALUE,
+)
 from erp_pipeline.sync.propagation import AIRepresentation
 
 
@@ -220,17 +225,41 @@ def canonical_record_to_representation(
         metadata={
             # Structural provenance only - enough for Phase 12 to route on and
             # for a reader to trace a vector back, with no business values.
+            "content_kind": ContentKind.STRUCTURED_RECORD.value,
             "canonical_record_id": record.record_id,
             "source_system_id": record.source.source_system_id,
             "source_type": record.source.source_type.value,
             "source_entity": record.source.source_entity,
             "sensitivity": record.sensitivity.value,
             "representation_config": config.fingerprint(),
+            **_business_identity(record),
         },
         content_hash=representation_content_hash(
             representation_id, text_for_ai=text, content=structured
         ),
     )
+
+
+def _business_identity(record: CanonicalRecord) -> dict[str, Any]:
+    """The generic business key a record already carries, if it carries one.
+
+    Phase 2 records this for source-native entities: ``employee_id`` / ``EMP002``,
+    or a composite ``warehouse_id|product_id`` / ``WH-1|P-77``. Phase 4 only has
+    to stop discarding it.
+
+    Records from the CANONICAL mapping path have no such metadata, and none is
+    invented for them. Their business key would have to be guessed from which
+    canonical field looks key-like, and a filter matching a guessed identity is
+    worse than a filter that returns nothing - the caller cannot tell the
+    difference between "no match" and "wrong match".
+    """
+    metadata = getattr(record, "metadata", None) or {}
+
+    return {
+        key: metadata[key]
+        for key in (BUSINESS_KEY_NAME, BUSINESS_KEY_VALUE)
+        if metadata.get(key) is not None
+    }
 
 
 def canonical_records_to_representations(

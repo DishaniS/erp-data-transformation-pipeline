@@ -9,9 +9,9 @@ is: given an embedding, put it somewhere, under a stable identity.
 
 CONFIGURABLE COLLECTION (Step 32)
 ---------------------------------
-``bpi2020_erp_knowledge`` is not hard-coded anywhere in this package. The
-collection is a constructor argument, because a generic engine that knew one
-deployment's collection name would not be generic.
+No collection name is hard-coded anywhere in this package. The collection is
+a constructor argument, because a generic engine that knew one deployment's
+collection name would not be generic.
 
 DIMENSION IS CHECKED BEFORE THE WRITE (Step 38)
 -----------------------------------------------
