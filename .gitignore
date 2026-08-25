@@ -291,6 +291,15 @@ tmp/
 !tests/fixtures/**/*.yaml
 !tests/fixtures/**/*.yml
 
+# Dataset configuration for the demonstration scripts. These are CONFIGURATION,
+# not data: they describe where a dataset's case id, activity and timestamp
+# live, and without them the demo cannot run from a fresh clone. The datasets
+# they point at remain ignored (see data/ below).
+!examples/
+!examples/**/*.json
+!examples/**/*.yaml
+!examples/**/*.yml
+
 # Frontend build definition. These are source, not data: without them a fresh
 # clone cannot run `npm ci` and the frontend cannot be built at all. Named
 # individually rather than un-ignoring frontend/*.json, so a stray data export
@@ -301,6 +310,11 @@ tmp/
 
 # ...but not the TypeScript incremental build cache, which is generated output.
 frontend/tsconfig.tsbuildinfo
+
+# Nor the production bundle. `dist/` above and `frontend/.gitignore` already
+# match it; naming it here as well makes the intent visible from the root
+# ignore file rather than only from the nested one.
+frontend/dist/
 
 # Runtime data that must NEVER be committed.
 var/
