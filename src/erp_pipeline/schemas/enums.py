@@ -121,6 +121,29 @@ class SensitivityLevel(_ContractEnum):
     RESTRICTED = "restricted"
 
 
+class ContentKind(_ContractEnum):
+    """What KIND of thing a vector represents, independent of its entity type.
+
+    ``entity_type`` says what the data is ABOUT (``employees``, ``invoice``);
+    this says what SHAPE it is. The two are orthogonal, and conflating them is
+    what would force a separate collection per kind:
+
+        employees + structured_record   the scalar row for EMP002
+        document  + document_chunk      a chunk of EMP002's certificate
+
+    Closed to the kinds that actually exist. ``schema`` was deliberately absent
+    until Phase 7 built schema representations: a filter accepting a value no
+    representation can carry tells a caller the system holds something it does
+    not. It is declared now because those representations exist.
+    """
+
+    STRUCTURED_RECORD = "structured_record"
+    DOCUMENT_CHUNK = "document_chunk"
+    #: The STRUCTURE of a source - tables, columns, types, keys, relationships.
+    #: Never the rows inside it.
+    SCHEMA = "schema"
+
+
 class FieldDataType(_ContractEnum):
     """Normalized cross-source type lattice.
 

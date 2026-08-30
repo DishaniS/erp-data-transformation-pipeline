@@ -215,6 +215,12 @@ class StoragePolicy:
         }[tier]
 
     def location_of(self, tier: StorageTier) -> StorageLocation:
+        """Where this tier lives.
+
+        A plain lookup: ``__post_init__`` already refuses a policy whose map
+        omits any tier, so a missing key here would be a bug worth surfacing
+        loudly rather than defaulting around.
+        """
         return self.tier_locations[tier]
 
     def requires_on_premises(self, sensitivity: SensitivityLevel) -> bool:

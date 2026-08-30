@@ -247,6 +247,7 @@ class CanonicalRecord(CanonicalEnvelope):
         source: SourceReference,
         entity_type: str,
         stable_source_key: Any,
+        identity_entity: str | None = None,
         normalized_data: Mapping[str, Any] | None = None,
         text_for_ai: str | None = None,
         sensitivity: SensitivityLevel = SensitivityLevel.INTERNAL,
@@ -267,7 +268,12 @@ class CanonicalRecord(CanonicalEnvelope):
         """
         record_id = make_canonical_record_id(
             source_system_id=source.source_system_id,
-            entity_type=entity_type,
+            # ``entity_type`` is a normalized semantic label and can differ
+            # from the addressable source object.  Source-native records use
+            # the latter so their identity is exactly source system + source
+            # entity + business record key.  Existing canonical callers keep
+            # the historical entity-type identity by omitting this argument.
+            entity_type=identity_entity or entity_type,
             stable_source_key=stable_source_key,
         )
 

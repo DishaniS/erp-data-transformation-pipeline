@@ -1,0 +1,71 @@
+{
+  "$comment": [
+    "Dataset configuration for the BPI Challenge 2020 travel-expense event log.",
+    "",
+    "This file is the ONLY place BPI-specific knowledge lives. Nothing in",
+    "src/erp_pipeline/ knows these column names, these process names or this",
+    "dataset. The demo script reads this file and hands it to the generic",
+    "process layer, which is the whole point: a different ERP event log is a",
+    "different configuration file, never a code change.",
+    "",
+    "Column names below are the NORMALIZED names produced by generic CSV",
+    "ingestion, not the raw header. The raw headers follow the XES event-log",
+    "convention ('case:concept:name', 'concept:name', 'time:timestamp'), and",
+    "ingestion normalizes ':' to '_'.",
+    "",
+    "Dataset: https://data.4tu.nl/ (BPI Challenge 2020). Not redistributed here."
+  ],
+
+  "source_system_id": "bpi2020_travel_expenses",
+
+  "event_log": {
+    "case_id_field": "case_concept_name",
+    "activity_field": "concept_name",
+    "timestamp_field": "time_timestamp",
+    "event_key_field": "id",
+    "excluded_fields": ["case_id"],
+    "entity_reference_fields": {
+      "employee": "org_resource",
+      "role": "org_role"
+    }
+  },
+
+  "files": [
+    {
+      "filename": "DomesticDeclarations.csv",
+      "process_type": "domestic_declarations"
+    },
+    {
+      "filename": "InternationalDeclarations.csv",
+      "process_type": "international_declarations"
+    },
+    {
+      "filename": "PermitLog.csv",
+      "process_type": "travel_permits"
+    },
+    {
+      "filename": "PrepaidTravelCost.csv",
+      "process_type": "prepaid_travel_cost"
+    },
+    {
+      "filename": "RequestForPayment.csv",
+      "process_type": "requests_for_payment"
+    }
+  ],
+
+  "document_classification": {
+    "$comment": [
+      "Additional keywords this dataset uses that the framework's generic ERP",
+      "vocabulary deliberately does not carry. 'declaration' is a plausible",
+      "generic term, but it is also this dataset's own vocabulary, so it is",
+      "supplied here rather than in the core defaults."
+    ],
+    "extra_rules": [
+      {
+        "document_type": "claim",
+        "keywords": ["declaration", "travel claim"],
+        "negative_keywords": ["policy", "procedure"]
+      }
+    ]
+  }
+}

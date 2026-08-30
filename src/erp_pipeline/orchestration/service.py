@@ -32,6 +32,7 @@ from erp_pipeline.orchestration.executor import InlineJobExecutor, JobExecutor
 from erp_pipeline.orchestration.extraction import (
     ExtractionRequest,
     RelationalSnapshotExtractor,
+    extractor_for,
     CsvSnapshotExtractor,
 )
 from erp_pipeline.orchestration.job_store import InMemoryJobStore, JobStore
@@ -55,6 +56,109 @@ from erp_pipeline.schemas.enums import SourceType
 LOGGER = logging.getLogger("erp_pipeline.orchestration.service")
 
 
+class BoundedExtractionCache:
+    """A bounded LRU of extraction results, keyed by upload id.
+
+    WHY IT IS BOUNDED NOW
+    ---------------------
+    Phase 6 made this cache load-bearing: the indexing job reads it so a
+    scanned certificate is not OCR'd twice. Phase 6 also recorded that it was
+    unbounded, which by Phase 10 is two problems rather than one. It grows
+    without limit, and what it grows with is EXTRACTED DOCUMENT TEXT - the
+    contents of every certificate, contract and payslip the service has seen,
+    held in process memory indefinitely.
+
+    WHY A CACHE AND NOT A STORE
+    ---------------------------
+    It is an optimisation, never authoritative. An evicted entry costs one
+    re-extraction from the upload that is still on disk, which is exactly what
+    happened before the cache existed. Nothing may depend on a hit, and
+    ``ingest_upload`` re-extracts on a miss - so eviction and restart are both
+    ordinary, not failure modes.
+    """
+
+    #: Small enough that a long-running service does not accumulate a corpus
+    #: in memory, large enough that an upload's own indexing job hits it.
+    DEFAULT_MAX_ENTRIES = 32
+
+    def __init__(self, max_entries: int | None = None) -> None:
+        from collections import OrderedDict
+
+        resolved = (
+            max_entries
+            if max_entries is not None
+            else _cache_size_from_environment()
+        )
+        # Never unlimited: a zero or negative configuration is a mistake, and
+        # honouring it would restore the unbounded behaviour being removed.
+        self._max_entries = max(1, int(resolved))
+        self._entries: "OrderedDict[str, Any]" = OrderedDict()
+        self.evictions = 0
+
+    @property
+    def max_entries(self) -> int:
+        return self._max_entries
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._entries
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key not in self._entries:
+            return default
+
+        self._entries.move_to_end(key)
+
+        return self._entries[key]
+
+    def __getitem__(self, key: str) -> Any:
+        value = self.get(key, _MISSING)
+
+        if value is _MISSING:
+            raise KeyError(key)
+
+        return value
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in self._entries:
+            self._entries.move_to_end(key)
+
+        self._entries[key] = value
+
+        while len(self._entries) > self._max_entries:
+            self._entries.popitem(last=False)
+            self.evictions += 1
+
+    def pop(self, key: str, default: Any = None) -> Any:
+        return self._entries.pop(key, default)
+
+    def clear(self) -> None:
+        self._entries.clear()
+
+    def keys(self):
+        return self._entries.keys()
+
+
+_MISSING = object()
+
+#: Configurable, with a safe default. Never unlimited.
+UPLOAD_CACHE_ENV = "ERP_UPLOAD_CACHE_MAX_ENTRIES"
+
+
+def _cache_size_from_environment() -> int:
+    import os
+
+    try:
+        return int(
+            os.environ.get(UPLOAD_CACHE_ENV)
+            or BoundedExtractionCache.DEFAULT_MAX_ENTRIES
+        )
+    except (TypeError, ValueError):
+        return BoundedExtractionCache.DEFAULT_MAX_ENTRIES
+
+
 @dataclass
 class PipelineServices:
     """The phase services orchestration calls. All optional, all injectable.
@@ -73,6 +177,20 @@ class PipelineServices:
     embedding: Any = None
     storage: Any = None
     records: Any = None
+    #: Phase 5's authoritative store for AI-ready text. Optional like every
+    #: other service: a deployment without one indexes exactly as it did
+    #: before, and simply cannot resolve a hit back to its content.
+    representations: Any = None
+    #: Phase 8. The policy governing outbound asset fetches, and the client
+    #: that performs them. BOTH default to None, which means refused: this
+    #: package ships no HTTP client, so importing it can never cause a request
+    #: and a deployment that configures nothing fetches nothing.
+    #: Phase 9's current-version registry. Optional like everything else: a
+    #: deployment without one behaves exactly as it did before Phase 9.
+    lifecycle: Any = None
+    remote_asset_policy: Any = None
+    remote_asset_fetcher: Any = None
+    remote_asset_resolver: Any = None
     sources: SourceRegistry = field(default_factory=SourceRegistry)
     uploads: UploadStore | None = None
     secrets: SecretProvider = field(default_factory=NullSecretProvider)
@@ -80,7 +198,9 @@ class PipelineServices:
     #: Set by the service so stages can reach schemas without a catalog.
     schema_cache: dict[str, Any] = field(default_factory=dict)
     mapping_cache: dict[str, Any] = field(default_factory=dict)
-    upload_results: dict[str, Any] = field(default_factory=dict)
+    upload_results: "BoundedExtractionCache" = field(
+        default_factory=lambda: BoundedExtractionCache()
+    )
     #: Mappings that are NOT yet executable because Phase 8 found ambiguity.
     #: They are addressable so a human can resolve them, but a draft can never
     #: be handed to a transformation - see `get_mapping_profile`.
@@ -160,15 +280,42 @@ class PipelineServices:
         settings = source.connection_settings(self.secrets)
 
         if source.source_type is SourceType.MONGODB:
+            from erp_pipeline.connectors.mongodb import MongoDBConnector
             from erp_pipeline.discovery import MongoDBInferenceService
 
-            result = MongoDBInferenceService().infer(settings)
-            schema = getattr(result, "schema", result)
+            # Mongo inference samples documents, so it needs a CONNECTOR - a
+            # live handle it can read through. This branch previously handed
+            # it the settings, so every orchestrated MongoDB discovery failed
+            # with "requires a source connector, got ConnectionSettings".
+            #
+            # The connector is closed here because discovery owns it: nothing
+            # downstream holds a reference, and leaving a client open would leak
+            # a socket per job.
+            connector = MongoDBConnector(settings)
+
+            try:
+                result = MongoDBInferenceService().infer(connector)
+                schema = getattr(result, "schema", result)
+            finally:
+                connector.close()
         else:
+            from erp_pipeline.connectors.registry import ConnectorRegistry
             from erp_pipeline.discovery import RelationalDiscoveryService
 
-            result = RelationalDiscoveryService().discover(settings)
-            schema = getattr(result, "schema", result)
+            # Relational discovery inspects live database metadata (tables,
+            # columns, keys) through SQLAlchemy, so it needs the same kind of
+            # CONNECTOR as Mongo - settings alone are not a handle it can read
+            # through. This branch previously handed it the settings, so every
+            # orchestrated relational discovery (a PostgreSQL/MySQL/SQL Server
+            # source registered through POST /v1/sources) failed with
+            # "requires a source connector, got ConnectionSettings".
+            connector = ConnectorRegistry.create(settings)
+
+            try:
+                result = RelationalDiscoveryService().discover(connector)
+                schema = getattr(result, "schema", result)
+            finally:
+                connector.close()
 
         self.schema_cache[schema.schema_id] = schema
 
@@ -229,12 +376,24 @@ class PipelineServices:
     def extract_snapshot(
         self, source: RegisteredSource, request: ExtractionRequest
     ) -> tuple[Any, ...]:
+        """Read a bounded snapshot of one entity, using the source's extractor.
+
+        The extractor is chosen by SOURCE TYPE rather than hardcoded. Before
+        this, every source went through ``RelationalSnapshotExtractor``, which
+        issues SQL - so ``MongoSnapshotExtractor`` existed, was exported, and
+        was never reachable. A MongoDB source-native job could discover a schema
+        and then fail to read a single document.
+
+        ``extractor_for`` already encoded this mapping; it simply had no caller.
+        CSV never arrives here - the EXTRACT stage routes uploads to
+        ``extract_csv_records`` before this point.
+        """
         if self.connection_factory is not None:
             factory = lambda: self.connection_factory(source)  # noqa: E731
         else:
             factory = self._sqlalchemy_factory(source)
 
-        return RelationalSnapshotExtractor().extract(request, factory)
+        return extractor_for(source.source_type).extract(request, factory)
 
     def _sqlalchemy_factory(self, source: RegisteredSource):
         import sqlalchemy as sa
@@ -291,27 +450,211 @@ class PipelineServices:
 
         return service.transform_records(records, profile, context)
 
+    def remote_asset_settings(self) -> tuple[Any, Any, Any]:
+        """Policy, fetcher and resolver for this deployment, or refusal."""
+        return (
+            self.remote_asset_policy,
+            self.remote_asset_fetcher,
+            self.remote_asset_resolver,
+        )
+
+    def extract_binary_assets(
+        self,
+        source_records: Sequence[Any],
+        canonical_records: Sequence[Any],
+        entity: Any,
+        binary_fields: Sequence[str],
+        asset_url_fields: Any = None,
+        field_sensitivity: Any = None,
+        job_sensitivity: Any = None,
+    ) -> Any:
+        """Open every attachment the rows carried or pointed at.
+
+        Pairs each raw row with the canonical record it became, because the
+        document needs the PARENT'S identity - a vector that cannot name the ERP
+        row it belongs to is not traceable, and Phase 4 has nothing to filter on.
+
+        ``asset_url_fields`` are the fields a caller EXPLICITLY declared
+        fetchable. Nothing is fetched for any other field, whatever it is named
+        or contains.
+        """
+        from erp_pipeline.orchestration.multimodal import extract_record_assets
+
+        policy, fetcher, resolver = self.remote_asset_settings()
+
+        return extract_record_assets(
+            source_records,
+            canonical_records,
+            entity,
+            binary_fields,
+            asset_url_fields=asset_url_fields,
+            field_sensitivity=field_sensitivity,
+            job_sensitivity=job_sensitivity,
+            url_policy=policy,
+            fetcher=fetcher,
+            resolver=resolver,
+        )
+
+    def transform_source_native(
+        self,
+        records: Sequence[Any],
+        entity: Any,
+        schema: Any,
+        source_type: Any = None,
+        source_id: str | None = None,
+        key_fields: Sequence[str] | None = None,
+        asset_url_fields: Sequence[str] = (),
+        sensitivity: Any = None,
+    ) -> Any:
+        """Transform an uncovered ERP entity under its own field names.
+
+        Delegates to Phase 9's source-native transformer. Orchestration's job
+        here is only to supply accurate provenance - which source system, which
+        schema snapshot - never to decide field meanings, which is exactly the
+        division the canonical ``transform`` already follows.
+        """
+        from erp_pipeline.transformation.source_native import SourceNativeTransformer
+
+        transformer = getattr(self, "source_native", None) or SourceNativeTransformer()
+
+        # The schema knows which system it describes; the registered source is
+        # only a fallback for schemas that predate the field.
+        source_system_id = (
+            getattr(schema, "source_system_id", None) or source_id or "unknown_source"
+        )
+
+        return transformer.transform_records(
+            records,
+            entity,
+            source_system_id=source_system_id,
+            source_type=source_type,
+            schema_id=getattr(schema, "schema_id", None),
+            schema_version=str(getattr(schema, "schema_version", "") or "") or None,
+            key_fields=key_fields,
+            asset_url_fields=asset_url_fields,
+            # Phase 10: the job's declared class, or the transformer's existing
+            # default when nothing was declared. Passing None would override
+            # that default with nothing.
+            **(
+                {"sensitivity": sensitivity} if sensitivity is not None else {}
+            ),
+        )
+
     def build_representations(self, records: Iterable[Any]) -> tuple[Any, ...]:
         from erp_pipeline.ai import canonical_record_to_representation
 
         return tuple(canonical_record_to_representation(r) for r in records)
 
-    def build_document_representations(self, result: Any) -> tuple[Any, ...]:
+    def build_document_representations(
+        self, result: Any, identity: Any = None
+    ) -> tuple[Any, ...]:
+        """Chunks from an extracted document, attached to an ERP record or not.
+
+        TWO IDENTITY REGIMES, AND WHY
+        -----------------------------
+        Without a declared ERP identity a chunk is identified by its CONTENT.
+        That is correct and deliberate: the same policy PDF uploaded twice is
+        the same document, and it should occupy one representation rather than
+        accumulating a copy per upload.
+
+        With a declared identity the chunk is identified by its ATTACHMENT,
+        through the same Phase 3 builder a database BLOB uses. Content identity
+        alone would collide the moment one certificate is uploaded against two
+        employees - identical bytes, identical chunk id, identical vector, and
+        one employee's document silently overwriting the other's. That is the
+        exact failure Phase 3 exists to prevent, and an upload is not a
+        different enough arrival to justify a different answer.
+        """
         from erp_pipeline.ai import document_to_representations
 
-        return tuple(document_to_representations(result))
+        document = getattr(result, "document", None) or result
+
+        if identity is None or getattr(identity, "is_empty", True):
+            return tuple(document_to_representations(result))
+
+        from erp_pipeline.ai.attached_documents import (
+            DocumentAttachment,
+            attached_document_to_representations,
+        )
+
+        file_source = getattr(document, "file", None)
+        document_id = getattr(file_source, "content_hash", None) or ""
+
+        attachment = DocumentAttachment(
+            # Only what the caller actually declared. No parent is invented
+            # from the business key: an `employee_id` is not a canonical record
+            # id, and a fabricated one would be indistinguishable from a real
+            # reference to whoever tried to resolve it.
+            parent_record_id=identity.parent_record_id,
+            # What keeps two employees' copies of one certificate apart when
+            # neither upload named a parent record. Without this the attachment
+            # key would be identical for both and one vector would overwrite
+            # the other - the Phase 3 collision, reintroduced by the upload
+            # path.
+            attachment_scope=_upload_attachment_scope(identity, document_id),
+            source_system_id=identity.source_system_id or "uploaded",
+            source_entity=identity.source_entity or "documents",
+            # An upload has no ERP column. The declared document type is the
+            # closest true equivalent; "upload" when nothing was declared.
+            source_field=identity.document_type or "upload",
+            document_id=document_id,
+            business_key_name=identity.business_key_name,
+            business_key_value=identity.business_key_value,
+            document_type=identity.document_type,
+            # Phase 11. Phase 10 added the form field, the validation and the
+            # attachment field, but not the line joining them: an upload that
+            # declared RESTRICTED was accepted, validated, and then indexed
+            # with no classification at all. The declaration is the caller's
+            # and is carried through unchanged - never inferred, never
+            # upgraded from the document type.
+            sensitivity=identity.sensitivity,
+            media_type=getattr(file_source, "media_type", None),
+        )
+
+        return tuple(
+            attached_document_to_representations(document, attachment)
+        )
 
     def embed(self, representations: Sequence[Any]) -> Any:
         service = self._require(self.embedding, "embedding service")
 
         return service.embed_many(representations)
 
-    def store_vector(self, record: Any) -> Any:
+    def store_vector(self, record: Any, profile: Any = None) -> Any:
+        """Hand one embedding to storage, with the record's own routing facts.
+
+        Orchestration's job here is to supply ACCURATE METADATA, never to pick
+        a tier. The record already carries the sensitivity its canonical record
+        declared - the AI layer carried it forward - so the profile is derived
+        from that rather than defaulted to INTERNAL. Which tier that sensitivity
+        leads to remains entirely the storage policy's decision.
+        """
         service = self._require(self.storage, "storage service")
 
-        return service.store(record)
+        if profile is None:
+            from erp_pipeline.storage.service import StorageProfile
 
-    def ingest_upload(self, upload_id: str) -> Any:
+            profile = StorageProfile.from_metadata(
+                getattr(record, "metadata", None)
+            )
+
+        return service.store(record, profile=profile)
+
+    def ingest_upload(self, upload_id: str, reuse: bool = True) -> Any:  # noqa: D401
+        """Extract an uploaded file, reusing the result if it is already known.
+
+        The upload endpoint extracts the file to answer the request, and the
+        indexing job then needs the same extraction. Re-parsing would OCR a
+        scanned certificate twice for one upload - the single most expensive
+        operation in the pipeline, repeated for no gain, because the bytes
+        behind an upload id never change.
+
+        The cache was already being populated here; only the read was missing.
+        ``reuse=False`` forces a fresh parse for a caller that wants one.
+        """
+        if reuse and upload_id in self.upload_results:
+            return self.upload_results[upload_id]
+
         service = self._require(self.ingestion, "file ingestion service")
         uploads = self._require(self.uploads, "upload store")
         result = service.ingest(uploads.path_for(upload_id))
@@ -613,6 +956,35 @@ class OrchestrationService:
 
     # -- jobs --
 
+    def index_schema(self, schema_id: str) -> tuple[str | None, str | None, str | None]:
+        """Start a schema indexing job for a schema already in the catalog.
+
+        Returns ``(job_id, status, error)``. Never raises: a schema that was
+        discovered and catalogued successfully is a real result, and losing it
+        because indexing could not be scheduled would be the wrong trade. The
+        caller reports the failure and the manual job route remains available.
+        """
+        try:
+            job = self.submit(
+                JobRequest(job_type=JobType.SCHEMA_PIPELINE, schema_id=schema_id)
+            )
+        except Exception as error:  # noqa: BLE001 - reported, never raised
+            return (
+                None,
+                None,
+                "the schema was discovered and catalogued, but automatic "
+                f"indexing could not be started ({type(error).__name__}). It "
+                "can be started with POST /v1/jobs using "
+                "job_type=schema_pipeline and this schema_id.",
+            )
+
+        try:
+            current = self.get(job.job_id)
+        except Exception:  # noqa: BLE001 - the job exists; the snapshot is extra
+            current = job
+
+        return job.job_id, (current or job).status.value, None
+
     def submit(
         self, request: JobRequest, idempotency_key: str | None = None
     ) -> Job:
@@ -726,3 +1098,28 @@ class OrchestrationService:
 
 
 __all__ = ["PipelineServices", "OrchestrationService"]
+
+
+def _upload_attachment_scope(identity: Any, document_id: str) -> str:
+    """What makes one upload's attachment distinct from another's.
+
+    Preference order, and the reason for it:
+
+    1. the declared ``parent_record_id`` - an actual ERP record beats anything
+       derived,
+    2. the declared business key - two employees issued one certificate are
+       different attachments even though neither upload named a record id,
+    3. the document's own content id - nothing was declared, so the document is
+       its own scope and re-uploading it is genuinely the same attachment.
+
+    This value is an identity discriminator, NOT a record reference: it never
+    reaches ``parent_record_id``, which stays absent unless the caller declared
+    one.
+    """
+    if identity.parent_record_id:
+        return identity.parent_record_id
+
+    if identity.has_business_key:
+        return f"{identity.business_key_name}={identity.business_key_value}"
+
+    return document_id

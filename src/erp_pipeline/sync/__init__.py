@@ -52,9 +52,9 @@ deterministic identity.
 
 BOUNDARIES
 ----------
-No ``bpi2020`` import (Step 76), no REST/SOAP endpoint execution, no external
-LLM, and no vector-database-specific code - the vector layer is reached through
-an interface, so Phase 11/12 can generalize it without touching this engine.
+No dataset-specific import, no REST/SOAP endpoint execution, no external LLM,
+and no vector-database-specific code - the vector layer is reached through an
+interface, so Phase 11/12 can generalize it without touching this engine.
 """
 
 from __future__ import annotations

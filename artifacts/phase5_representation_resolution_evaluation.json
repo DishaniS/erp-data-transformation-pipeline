@@ -1,0 +1,175 @@
+{
+  "generated_at": "2026-08-25T08:59:30.684151+00:00",
+  "environment": {
+    "ocr_available": true
+  },
+  "corpus": {
+    "representations_indexed": 20,
+    "employees": 5,
+    "shared_certificate_employees": [
+      "EMP003",
+      "EMP004"
+    ],
+    "store": "sqlite (erp_runtime attached), production SQL unchanged"
+  },
+  "queries": [
+    {
+      "name": "emp002 certificate",
+      "filters": {
+        "business_key_value": "EMP002",
+        "document_type": "birth_certificate",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "search_ms": 0.2699,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "emp002 contract",
+      "filters": {
+        "business_key_value": "EMP002",
+        "document_type": "employment_contract",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "search_ms": 0.1578,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "emp002 structured",
+      "filters": {
+        "business_key_value": "EMP002",
+        "content_kind": "structured_record"
+      },
+      "hits": 1,
+      "search_ms": 0.1432,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "emp002 everything",
+      "filters": {
+        "business_key_value": "EMP002"
+      },
+      "hits": 3,
+      "search_ms": 0.1507,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "emp003 certificate",
+      "filters": {
+        "business_key_value": "EMP003",
+        "document_type": "birth_certificate"
+      },
+      "hits": 1,
+      "search_ms": 0.1477,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "emp004 shared certificate",
+      "filters": {
+        "business_key_value": "EMP004",
+        "document_type": "birth_certificate"
+      },
+      "hits": 1,
+      "search_ms": 0.2018,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "emp009 multi-chunk contract",
+      "filters": {
+        "business_key_value": "EMP009",
+        "content_kind": "document_chunk"
+      },
+      "hits": 10,
+      "search_ms": 0.2462,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "all document chunks",
+      "filters": {
+        "content_kind": "document_chunk"
+      },
+      "hits": 15,
+      "search_ms": 0.2488,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "all structured records",
+      "filters": {
+        "content_kind": "structured_record"
+      },
+      "hits": 5,
+      "search_ms": 0.2511,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    },
+    {
+      "name": "whole corpus",
+      "filters": {},
+      "hits": 20,
+      "search_ms": 0.172,
+      "wrong_unresolvable": 0,
+      "wrong_text": 0,
+      "wrong_parent": 0,
+      "wrong_type": 0,
+      "wrong_prov": 0
+    }
+  ],
+  "gates": {
+    "search_hits_attempted": 58,
+    "search_hits_resolved": 58,
+    "unresolvable_hits": 0,
+    "wrong_text_resolutions": 0,
+    "wrong_parent_identities": 0,
+    "wrong_document_types": 0,
+    "chunk_provenance_mismatches": 0,
+    "association_collapse": 0,
+    "chunk_crosstalk": 0,
+    "raw_binary_leakage": 0,
+    "leak_markers": [],
+    "text_in_qdrant_payload": false,
+    "survived_restart": true
+  },
+  "latency_ms": {
+    "representation_lookup_median": 0.251,
+    "representation_lookup_p95": 0.5125,
+    "search_and_resolve_median": 0.4581,
+    "search_and_resolve_p95": 0.7636
+  },
+  "passed": true
+}

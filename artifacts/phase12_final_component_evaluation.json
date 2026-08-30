@@ -1,0 +1,237 @@
+{
+  "phase": 12,
+  "title": "Final consolidated component evaluation",
+  "component": "ERP-Aware Multimodal Data Transformation, Vector Indexing and Retrieval Pipeline for Legacy ERP Systems",
+  "identifier": {
+    "member": 4,
+    "student": "IT22267290",
+    "project": "R26-SE-034"
+  },
+  "generated_at": "2026-08-25T16:09:55.432410+00:00",
+  "environment": {
+    "python": "3.13.9",
+    "platform": "win32",
+    "vector_store": "in-process tier (NOT a live Qdrant server)",
+    "executor": "inline, in-process",
+    "llm_used": false,
+    "note": "This is a consolidation run. Per-dimension metrics live in the specialist artifacts of Phases 3-11 and are NOT recomputed here."
+  },
+  "scenarios_attempted": 30,
+  "scenarios_passed": 30,
+  "scenarios": [
+    {
+      "case": "CASE1",
+      "scenario": "csv_schema_inferred",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE1",
+      "scenario": "csv_rows_not_auto_indexed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE1",
+      "scenario": "source_native_records_indexed",
+      "passed": true,
+      "detail": "transformed=3"
+    },
+    {
+      "case": "CASE1",
+      "scenario": "structured_record_retrievable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE2",
+      "scenario": "restricted_certificate_indexed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE2",
+      "scenario": "exact_identity_retrieval",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE2",
+      "scenario": "content_resolution_correct",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE3",
+      "scenario": "unsafe_remote_targets_refused_before_contact",
+      "passed": true,
+      "detail": "refused 5/5, contacted 0"
+    },
+    {
+      "case": "CASE3",
+      "scenario": "remote_asset_disabled_by_default",
+      "passed": true,
+      "detail": "no HTTP client is bundled; a deployment must supply policy + fetcher"
+    },
+    {
+      "case": "CASE4",
+      "scenario": "upload_indexes_with_no_second_call",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE4",
+      "scenario": "uploaded_document_searchable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE4",
+      "scenario": "uploaded_document_resolves",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE5",
+      "scenario": "schema_search_returns_only_schemas",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE5",
+      "scenario": "schema_representation_carries_structure",
+      "passed": true,
+      "detail": "field-level ranking is bounded by the Phase 7 measurement"
+    },
+    {
+      "case": "CASE6",
+      "scenario": "updated_schema_is_current",
+      "passed": true,
+      "detail": "gained_new_field=True kept_existing=True"
+    },
+    {
+      "case": "CASE7",
+      "scenario": "replacement_is_current_and_old_is_not",
+      "passed": true,
+      "detail": "new_present=True stale_returned=False"
+    },
+    {
+      "case": "CASE8",
+      "scenario": "restricted_reported_on_hits",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE8",
+      "scenario": "no_document_text_in_vector_payload",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE8",
+      "scenario": "no_binary_or_base64_leakage",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE8",
+      "scenario": "restricted_text_encrypts_and_round_trips",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE9",
+      "scenario": "live_response_adapted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE9",
+      "scenario": "erp_executed_exactly_once_by_member2",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE9",
+      "scenario": "erp_credentials_redacted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE9",
+      "scenario": "binary_response_extracts_to_asset",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE10",
+      "scenario": "unsupported_binary_refused_not_fabricated",
+      "passed": true,
+      "detail": "status=415"
+    },
+    {
+      "case": "CASE10",
+      "scenario": "corrupt_pdf_reported_not_invented",
+      "passed": true,
+      "detail": "status=422"
+    },
+    {
+      "case": "CASE10",
+      "scenario": "missing_key_fails_closed_with_no_plaintext_fallback",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE10",
+      "scenario": "blocked_url_refused_before_contact",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case": "CASE10",
+      "scenario": "failed_replacement_preserves_previous_current_version",
+      "passed": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "case": "CASE10",
+      "scenario": "erp_error_adapted_without_retry",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "counts": {
+    "structured_records_indexed": 3,
+    "documents_indexed": 4,
+    "schema_representations_indexed": 1,
+    "search_queries": 10,
+    "correct_top_results": 4,
+    "search_hits_resolved": 8
+  },
+  "gates": {
+    "failed_core_scenarios": 0,
+    "wrong_identity_results": 0,
+    "unresolvable_current_hits": 0,
+    "stale_current_version_hits": 0,
+    "binary_or_base64_leakage": 0,
+    "secret_leakage": 0,
+    "restricted_plaintext_findings": 0,
+    "qdrant_text_findings": 0,
+    "private_or_internal_targets_contacted": 0,
+    "sensitivity_propagation_failures": 0,
+    "member4_erp_executions": 0,
+    "member4_policy_decisions": 0,
+    "csv_mapping_bypass": 0,
+    "current_schema_field_loss": 0,
+    "association_collisions": 0,
+    "fabricated_outputs": 0
+  },
+  "all_gates_passed": true,
+  "latency_ms_in_process": {
+    "blob_upload_to_searchable_ms": 142.486,
+    "identity_search_ms": 2.683,
+    "upload_to_searchable_ms": 30.157,
+    "responses_adapt_ms": 22.134
+  },
+  "deliberate_non_metric": "No single 'system accuracy' is reported. Mapping accuracy, retrieval ranking, relevance recall, storage fidelity, leakage counts and freshness are not commensurable, and averaging them would produce a number with no defensible definition."
+}

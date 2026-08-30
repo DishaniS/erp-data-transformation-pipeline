@@ -1,9 +1,8 @@
 """PostgreSQL configuration for the schema catalog's physical storage.
 
-Independent from ``bpi2020.common.config`` on purpose: ``erp_pipeline`` must
-not depend on the BPI-specific package (see Phase 1's architecture boundary).
-This module restates the same canonical-with-deprecated-fallback pattern
-Phase 0 established, scoped to exactly what the catalog needs.
+Scoped to exactly what the catalog needs, and no wider. It implements the
+canonical-name-with-deprecated-fallback pattern this repository uses for every
+setting, so an older variable keeps working while printing a warning.
 
 Logical vs physical
 --------------------

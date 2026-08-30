@@ -215,6 +215,19 @@ def canonical_record_to_representation(
     representation_id = make_representation_id(
         record.entity_type, record.record_id
     )
+    # Dynamic filter attributes are schema/catalog-driven, never a blind dump
+    # of a record's fields: only a caller that actually knows the discovered
+    # schema (``SourceNativeTransformer``, which excludes anything the
+    # schema marked non-filterable) is in a position to declare them. A
+    # record built any other way - like a plain ``CanonicalRecord.from_source``
+    # with no schema behind it - carries none, rather than this function
+    # guessing which of its normalized_data fields are safe to expose as
+    # filters. Guessing is exactly how an amount or any other arbitrary
+    # business value used to reach the Qdrant payload.
+    declared_filters = (record.metadata or {}).get("filter_attributes")
+    filter_attributes = (
+        dict(declared_filters) if isinstance(declared_filters, Mapping) else {}
+    )
 
     return AIRepresentation(
         representation_id=representation_id,
@@ -230,6 +243,8 @@ def canonical_record_to_representation(
             "source_system_id": record.source.source_system_id,
             "source_type": record.source.source_type.value,
             "source_entity": record.source.source_entity,
+            "record_key": record.source.source_record_key,
+            "filter_attributes": filter_attributes,
             "sensitivity": record.sensitivity.value,
             "representation_config": config.fingerprint(),
             **_business_identity(record),

@@ -17,6 +17,7 @@ disk.
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import Any
 
@@ -57,10 +58,11 @@ class ImageFileIngestion:
 
     def ingest(self) -> ExtractedDocument:
         image_module = _import_pillow()
-        path = self._require_local_path()
 
-        properties = self._inspect(image_module, path)
-        page = self._extract_text(image_module, path)
+        # A fresh source per call: both readers open independently, and a
+        # consumed stream cannot be reopened.
+        properties = self._inspect(image_module, self._open_source())
+        page = self._extract_text(image_module, self._open_source())
 
         return ExtractedDocument(
             file=self._file,
@@ -213,6 +215,19 @@ class ImageFileIngestion:
         if self._ocr is None:
             self._ocr = probe_ocr(self._tesseract_cmd)
         return self._ocr
+
+    def _open_source(self) -> Any:
+        """What ``Image.open`` should read - memory or disk.
+
+        Pillow accepts any binary file object, so content that never was a file
+        (a database BLOB) is read straight from memory rather than spilled to a
+        temporary file. A new ``BytesIO`` is returned each time because the
+        caller closes what it opens.
+        """
+        if self._file.payload is not None:
+            return io.BytesIO(self._file.payload)
+
+        return self._require_local_path()
 
     def _require_local_path(self) -> Path:
         if self._file.local_path is None:  # pragma: no cover - guarded upstream

@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-08-25T14:22:56.157597+00:00",
+  "claim": "explicit sensitivity classification, propagated end-to-end; text at or above CONFIDENTIAL encrypted at rest with AES-256-GCM. No compliance claim is made.",
+  "environment": {
+    "note": "cryptographic timings are in-process and are not database or network latency"
+  },
+  "assignments": [
+    {
+      "artifact": "EMP002 structured record",
+      "content_kind": "structured_record",
+      "expected": "internal",
+      "actual": "internal",
+      "correct": true,
+      "encrypted_at_rest": false
+    },
+    {
+      "artifact": "EMP002 birth_certificate",
+      "content_kind": "document_chunk",
+      "expected": "restricted",
+      "actual": "restricted",
+      "correct": true,
+      "encrypted_at_rest": true
+    },
+    {
+      "artifact": "EMP002 profile_photo",
+      "content_kind": "document_chunk",
+      "expected": "confidential",
+      "actual": "confidential",
+      "correct": true,
+      "encrypted_at_rest": true
+    },
+    {
+      "artifact": "EMP002 employment_contract",
+      "content_kind": "document_chunk",
+      "expected": "confidential",
+      "actual": "confidential",
+      "correct": true,
+      "encrypted_at_rest": true
+    },
+    {
+      "artifact": "EMP002 remote certificate",
+      "content_kind": "document_chunk",
+      "expected": "restricted",
+      "actual": "restricted",
+      "correct": true,
+      "encrypted_at_rest": true
+    },
+    {
+      "artifact": "employees schema",
+      "content_kind": "schema",
+      "expected": "restricted",
+      "actual": "restricted",
+      "correct": true,
+      "encrypted_at_rest": true
+    },
+    {
+      "artifact": "EMP002 certificate replacement",
+      "content_kind": "document_chunk",
+      "expected": "restricted",
+      "actual": "restricted",
+      "correct": true,
+      "encrypted_at_rest": true
+    }
+  ],
+  "gates": {
+    "sensitivity_assignments_attempted": 7,
+    "correct_assignments": 7,
+    "wrong_sensitivity_assignments": 0,
+    "silent_downgrades": 0,
+    "sensitivity_propagation_failures": 0,
+    "restricted_plaintext_findings": 0,
+    "qdrant_text_findings": 0,
+    "secret_leakage": 0,
+    "secret_markers": [],
+    "decryption_mismatches": 0,
+    "plaintext_in_ciphertext": false,
+    "phase14_temp_files": 0,
+    "upload_cache_max_observed_entries": 4
+  },
+  "encryption": {
+    "algorithm": "AES-256-GCM",
+    "encrypted_representations": 6,
+    "plaintext_representations": 1,
+    "encrypt_median_ms": 0.0472,
+    "decrypt_median_ms": 0.0216
+  },
+  "passed": true
+}

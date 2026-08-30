@@ -76,14 +76,45 @@ class BootstrapResult:
 
 
 def bootstrap_all(engine: Any) -> BootstrapResult:
-    """Create every generic schema this application owns. Idempotent."""
+    """Create every database object this application owns. Idempotent.
+
+    "Every object" is meant literally. This previously created
+    ``erp_runtime.canonical_records`` but NOT the other three tables in the
+    same schema - ``registered_sources``, ``uploads`` and ``mapping_drafts`` -
+    because those were created only by API startup. An operator who ran this
+    command and then started the API with ``ERP_BOOTSTRAP_ON_STARTUP=false``
+    got a runtime that failed on the first source registration, with nothing
+    in the bootstrap output hinting at why.
+
+    Running this repeatedly is safe: every helper uses create-if-missing DDL
+    and additive ``ADD COLUMN IF NOT EXISTS`` migrations, so no existing row
+    is touched.
+    """
     from erp_pipeline.catalog import bootstrap_catalog
     from erp_pipeline.orchestration import (
         bootstrap_orchestration_schema,
         bootstrap_record_schema,
+        bootstrap_representation_schema,
     )
+    from erp_pipeline.orchestration.lifecycle import bootstrap_lifecycle_schema
+    from erp_pipeline.orchestration.scheduler import bootstrap_scheduler_schema
+    from erp_pipeline.runtime.persistence import bootstrap_runtime_persistence
     from erp_pipeline.storage import bootstrap_storage_schema
     from erp_pipeline.sync import bootstrap_sync_schema
+
+    def bootstrap_runtime(target: Any) -> None:
+        """Every part of ``erp_runtime``, in one step.
+
+        The canonical record store, the runtime persistence stores and Phase
+        5's representation store live in the same schema and are equally
+        required; splitting them across separate code paths is what produced
+        the gap this closes.
+        """
+        bootstrap_record_schema(target)
+        bootstrap_runtime_persistence(target)
+        bootstrap_representation_schema(target)
+        bootstrap_lifecycle_schema(target)
+        bootstrap_scheduler_schema(target)
 
     before = existing_schemas(engine)
     results: list[SchemaResult] = []
@@ -93,7 +124,12 @@ def bootstrap_all(engine: Any) -> BootstrapResult:
         ("erp_sync", "Phase 10 incremental sync", bootstrap_sync_schema),
         ("erp_vector_storage", "Phase 12 tier state", bootstrap_storage_schema),
         ("erp_orchestration", "Phase 13 jobs", bootstrap_orchestration_schema),
-        ("erp_runtime", "Phase 13 canonical records", bootstrap_record_schema),
+        (
+            "erp_runtime",
+            "Phase 13 canonical records, sources, uploads, mapping drafts; "
+            "Phase 5 AI representations",
+            bootstrap_runtime,
+        ),
     )
 
     for schema, owner, helper in steps:

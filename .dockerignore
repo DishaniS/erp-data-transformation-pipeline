@@ -1,0 +1,56 @@
+# Build context exclusions.
+#
+# The first block is the one that matters: .env holds the Qdrant API key, the
+# cold-archive key, the representation encryption key, the API key and the
+# database password. Every one of those is supplied to the running container as
+# an App Service setting instead, so none of them belongs in an image layer -
+# an image layer is readable by anyone who can pull the image.
+
+.env
+.env.*
+*.pem
+*.key
+.azure-suffix
+
+# Version control and local tooling
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Local Python environment and caches - the image installs its own
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.egg-info
+src/*.egg-info
+
+# Node / frontend developer UI. The API image serves no frontend assets.
+frontend/node_modules
+frontend/dist
+node_modules
+
+# Research material that the runtime never reads. Excluded to keep the image
+# small, NOT deleted from the repository.
+tests
+docs
+artifacts
+scripts/demos
+examples
+data
+notebooks
+var
+
+# Local state that must never be baked in
+*.sqlite
+*.db
+var/uploads
+var/cold-archive

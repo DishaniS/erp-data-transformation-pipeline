@@ -23,7 +23,7 @@ import time. Attempting to actually connect with a missing driver raises
 
 This package depends on ``erp_pipeline.schemas`` (for ``SourceType`` and
 ``SourceSystem``) and on SQLAlchemy, which the project already requires. It
-never imports ``bpi2020``.
+never imports a dataset-specific module.
 """
 
 from __future__ import annotations

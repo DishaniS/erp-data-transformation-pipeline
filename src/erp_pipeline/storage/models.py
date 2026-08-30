@@ -345,6 +345,88 @@ class StorageRecordMetadata:
     business_criticality: BusinessCriticality = BusinessCriticality.NORMAL
     latency_requirement: LatencyRequirement = LatencyRequirement.STANDARD
     entity_type: str | None = None
+    #: The canonical record this vector was derived from, carried FORWARD from
+    #: the representation rather than reconstructed. Representation ids are
+    #: normalized (``:`` becomes ``_``), so an ``erp:`` id cannot be recovered
+    #: from an ``ai:`` id by parsing - a search hit that could not name its
+    #: record is a hit a consumer cannot resolve.
+    #:
+    #: ``None`` means "this vector predates the field" or "it derives from no
+    #: canonical record". Both are reported honestly rather than guessed.
+    canonical_record_id: str | None = None
+    #: Provenance carried alongside, so retrieval can be filtered by origin
+    #: without a second lookup.
+    source_system_id: str | None = None
+    source_entity: str | None = None
+    #: Business key inside ``source_entity``. Together with source system and
+    #: entity this is the canonical source identity.
+    record_key: str | None = None
+    #: Set only for document chunks; ``None`` for structured records.
+    document_id: str | None = None
+    # ------------------------------------------------------------------
+    # Phase 4 - identity and provenance a retrieval filter can match on.
+    #
+    # These live here, and not only in the vector payload, for a specific
+    # reason: ``HybridVectorStore._merge`` re-checks every filter against this
+    # object as a backstop against a payload and a state row disagreeing. A
+    # field the payload has and this does not would make that backstop reject
+    # every hit it was meant to protect.
+    # ------------------------------------------------------------------
+    #: ``structured_record`` or ``document_chunk``. What SHAPE this vector is,
+    #: as opposed to what it is about.
+    content_kind: str | None = None
+    #: For a document chunk, the ERP record the document hangs off. Kept
+    #: SEPARATE from ``canonical_record_id``: a chunk of EMP002's certificate
+    #: derives from no canonical record of its own, and collapsing the two
+    #: would claim the chunk is the employee.
+    parent_record_id: str | None = None
+    #: The binary column the document came out of.
+    source_field: str | None = None
+    #: Generic business identity, as Phase 2 resolved it - ``employee_id`` /
+    #: ``EMP002``, or a composite ``warehouse_id|product_id`` / ``WH-1|P-77``.
+    #: Generic on purpose: an ERP-independent pipeline cannot have an
+    #: ``employee_id`` column in its retrieval contract.
+    business_key_name: str | None = None
+    business_key_value: str | None = None
+    #: Schema-driven scalar employee attributes stored as Qdrant keyword
+    #: payloads. Kept separately so they cannot overwrite provenance keys.
+    filter_attributes: Mapping[str, Any] = field(default_factory=dict)
+    #: What the business calls this document, from the column name.
+    document_type: str | None = None
+    # ------------------------------------------------------------------
+    # Phase 7 - schema provenance. Set only for `content_kind = schema`.
+    # ------------------------------------------------------------------
+    #: The schema/catalog the entity lives in. Filterable.
+    schema_name: str | None = None
+    #: ``table`` / ``view`` / ``collection`` / ``dataset``. Filterable.
+    entity_kind: str | None = None
+    #: The content-addressed SNAPSHOT this representation was built from.
+    #: Returned so a hit can be traced to a catalog version; not filterable,
+    #: because it changes whenever the schema does.
+    schema_id: str | None = None
+    schema_version: str | None = None
+    #: Stable across schema versions, unlike ``schema_id``.
+    entity_id: str | None = None
+    #: Which field group of a wide entity this representation covers.
+    schema_chunk_index: int | None = None
+    # ------------------------------------------------------------------
+    # Phase 9 - lifecycle. NOT a search filter: an internal correctness
+    # property, deliberately not exposed for callers to set.
+    # ------------------------------------------------------------------
+    #: False once a newer version of this ERP slot became current. Search
+    #: excludes it immediately, whether or not the physical vector has been
+    #: deleted yet - which is what makes a failed Qdrant delete a cleanup
+    #: backlog rather than a wrong answer.
+    #:
+    #: ``True`` by default so every vector written before Phase 9, and every
+    #: representation with no managed slot, keeps behaving exactly as it did.
+    is_current: bool = True
+    #: The ERP slot this vector occupies, when it has one.
+    logical_key: str | None = None
+    #: Chunk provenance, returned with a hit and never filtered on.
+    page_start: int | None = None
+    page_end: int | None = None
+    chunk_index: int | None = None
     access_count: int = 0
     recent_access_count: int = 0
     last_accessed_at: datetime | None = None
@@ -438,6 +520,12 @@ class StorageRecordMetadata:
             "business_criticality": self.business_criticality.value,
             "latency_requirement": self.latency_requirement.value,
             "entity_type": self.entity_type,
+            "canonical_record_id": self.canonical_record_id,
+            "source_system_id": self.source_system_id,
+            "source_entity": self.source_entity,
+            "record_key": self.record_key,
+            "document_id": self.document_id,
+            "filter_attributes": dict(self.filter_attributes),
             "access_count": self.access_count,
             "recent_access_count": self.recent_access_count,
             "last_accessed_at": (

@@ -21,6 +21,8 @@ from erp_pipeline.storage.errors import (
     TierUnavailableError,
     VectorIdentityMismatchError,
 )
+from erp_pipeline.storage.payload_indexes import ensure_payload_indexes
+from erp_pipeline.schemas.search_fields import RESERVED_PAYLOAD_FIELDS
 from erp_pipeline.storage.models import (
     MeasurementKind,
     StorageFootprint,
@@ -57,6 +59,11 @@ class QdrantHotTier:
 
         if self.collection_name in existing:
             if not recreate:
+                # The collection is already here, but it may predate payload
+                # indexing - which is the state every already-deployed cluster
+                # is in. Ensure them and return; nothing is recreated.
+                ensure_payload_indexes(self.client, self.collection_name)
+
                 return
             self.client.delete_collection(self.collection_name)
 
@@ -70,6 +77,11 @@ class QdrantHotTier:
                 on_disk=False,
             ),
         )
+
+        # Filtered search on managed Qdrant REQUIRES payload indexes; without
+        # them every filtered query is a 400. Idempotent, and never recreates
+        # the collection just to add one.
+        ensure_payload_indexes(self.client, self.collection_name)
 
     def live_configuration(self) -> dict[str, Any]:
         """The configuration the SERVER reports, not what we asked for."""
@@ -125,6 +137,16 @@ class QdrantHotTier:
 
         point_id = vector_id_for(record.representation_id)
         self.upsert_calls += 1
+        dynamic_fields = set(payload or {}) - RESERVED_PAYLOAD_FIELDS
+        known = set(getattr(self, "_dynamic_payload_indexes", set()))
+        missing = tuple(sorted(dynamic_fields - known))
+        if missing:
+            report = ensure_payload_indexes(
+                self.client, self.collection_name, field_names=missing
+            )
+            known.update(report["created"])
+            known.update(report["already_present"])
+            self._dynamic_payload_indexes = known
 
         self.client.upsert(
             collection_name=self.collection_name,
@@ -174,9 +196,18 @@ class QdrantHotTier:
         return True
 
     def search(
-        self, vector: Sequence[float], limit: int = 5
+        self,
+        vector: Sequence[float],
+        limit: int = 5,
+        query_filter: Any | None = None,
     ) -> list[tuple[str, float]]:
-        """Return ``(point_id, score)`` pairs, highest score first."""
+        """Return ``(point_id, score)`` pairs, highest score first.
+
+        ``query_filter`` is a Qdrant ``Filter`` applied SERVER-SIDE, so the
+        constraint narrows the ANN search itself rather than discarding
+        results afterwards. Over-fetching and post-filtering would silently
+        return fewer than ``limit`` matches whenever the filter is selective.
+        """
         self.search_calls += 1
 
         results = self.client.query_points(
@@ -184,9 +215,34 @@ class QdrantHotTier:
             query=list(vector),
             limit=limit,
             with_payload=False,
+            query_filter=query_filter,
         ).points
 
         return [(str(point.id), float(point.score)) for point in results]
+
+    def fetch(
+        self,
+        query_filter: Any,
+        limit: int = 100,
+    ) -> list[tuple[str, Mapping[str, Any]]]:
+        """Return ``(point_id, payload)`` pairs matching a filter - no vector.
+
+        Uses Qdrant's ``scroll``, which is satisfied by the payload index on
+        the filtered fields. This is identity/metadata retrieval, not
+        similarity search: there is no query vector, so no ANN graph is
+        walked and no relevance score is computed - the filter alone decides
+        membership, exactly as it narrows ``search()``'s candidate set, just
+        without a ranking on top of it.
+        """
+        points, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            scroll_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        return [(str(point.id), dict(point.payload or {})) for point in points]
 
     def count(self) -> int:
         return int(

@@ -61,6 +61,18 @@ class PipelineStage(str, Enum):
     # structured
     DISCOVER = "discover"
     MAP = "map"
+    #: Decides whether a source-native job is ALLOWED to proceed. Distinct from
+    #: MAP because it produces no profile - it produces an admission decision.
+    SOURCE_NATIVE_GUARD = "source_native_guard"
+    #: Opens the binary fields the source row carried. Placed AFTER AI_BUILD
+    #: because that is the first point where BOTH the raw bytes and a stable
+    #: parent record id exist at once, and because AI_BUILD assigns
+    #: `representations` wholesale - running earlier would have it overwritten.
+    MULTIMODAL_EXTRACT = "multimodal_extract"
+    PERSIST_REPRESENTATIONS = "persist_representations"
+    #: Phase 9. Runs LAST, after the new version is safely stored, so a failure
+    #: anywhere earlier leaves the previous version current and searchable.
+    LIFECYCLE_COMMIT = "lifecycle_commit"
     EXTRACT = "extract"
     TRANSFORM = "transform"
     VALIDATE = "validate"
@@ -90,6 +102,17 @@ class JobType(str, Enum):
     INCREMENTAL_SYNC = "incremental_sync"
     DRIFT_CHECK = "drift_check"
     API_SPEC_PREPARATION = "api_spec_preparation"
+    #: An ERP entity the canonical model does not cover, indexed on its own
+    #: terms. Its own job type rather than a flag on the structured pipeline,
+    #: so a caller cannot arrive here by accident: choosing it is a statement
+    #: that no canonical vocabulary applies, and the guard stage refuses the
+    #: job outright if one does. That is what keeps it from becoming a way
+    #: around an ambiguous mapping that a human is supposed to resolve.
+    SOURCE_NATIVE_PIPELINE = "source_native_pipeline"
+    #: Phase 7. Its input is a SourceSchema rather than rows or a document, so
+    #: it is its own job type rather than an option on an existing one - but it
+    #: runs the same PERSIST -> EMBED -> TIER_ROUTE tail as everything else.
+    SCHEMA_PIPELINE = "schema_pipeline"
 
 
 @dataclass(frozen=True)
@@ -111,6 +134,27 @@ class JobCounters:
     vectors_failed: int | None = None
     documents_ingested: int | None = None
     chunks_built: int | None = None
+    #: Phase 3 multimodal counts. Optional like every other counter, so a job
+    #: that never saw a BLOB reports None rather than a misleading zero.
+    binary_fields_seen: int | None = None
+    binary_assets_extracted: int | None = None
+    binary_assets_skipped: int | None = None
+    ocr_assets: int | None = None
+    #: Phase 8: declared remote references this run attempted, permitted or not.
+    remote_assets_attempted: int | None = None
+    #: Phase 9 lifecycle outcomes.
+    slots_promoted: int | None = None
+    representations_superseded: int | None = None
+    stale_vectors_removed: int | None = None
+    stale_cleanup_deferred: int | None = None
+    #: Phase 5: AI text written to durable storage, so a search hit can be
+    #: resolved back to what it actually says.
+    representations_persisted: int | None = None
+    #: Phase 7: schema entities turned into searchable structure.
+    schema_entities_indexed: int | None = None
+    #: Representations removed because the entity shrank and no longer needs
+    #: that many field groups.
+    schema_representations_pruned: int | None = None
     operations_parsed: int | None = None
 
     def merged(self, **updates: int | None) -> "JobCounters":

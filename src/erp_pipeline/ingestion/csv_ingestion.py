@@ -512,7 +512,14 @@ class CsvFileIngestion:
 
         entity = SourceEntity(
             entity_id=self._entity_id(entity_name),
-            source_name=self._file.original_filename,
+            # The LOGICAL entity name, not the filename. Phase 8's entity
+            # evidence matches `source_name` against the canonical model, so
+            # leaving "invoices.csv" here stopped every CSV entity matching
+            # "invoice" cleanly and pushed mappable fields into AMBIGUOUS.
+            # The filename is PROVENANCE and is preserved verbatim on
+            # FileProvenance.original_filename and in this entity's metadata
+            # below; only the name used for SEMANTIC interpretation changes.
+            source_name=entity_name,
             normalized_name=entity_name,
             # A CSV is a dataset, not a table: it has no engine, no catalog and
             # no declared constraints.
@@ -639,7 +646,8 @@ class CsvFileIngestion:
         entity_name = self._entity_name()
         entity = SourceEntity(
             entity_id=self._entity_id(entity_name),
-            source_name=self._file.original_filename,
+            # Logical entity name, as above - the filename stays in provenance.
+            source_name=entity_name,
             normalized_name=entity_name,
             entity_kind=EntityKind.DATASET,
             fields=(),

@@ -20,7 +20,7 @@ Public surface:
     verify       python -m erp_pipeline.catalog.verify
 
 This package depends on SQLAlchemy and psycopg2, which ``erp_pipeline.
-schemas`` deliberately does not. It never imports ``bpi2020``.
+schemas`` deliberately does not. It never imports a dataset-specific module.
 """
 
 from __future__ import annotations

@@ -1,4 +1,6 @@
-pandas
+# pandas was removed on 2026-08-21: it was used only by the dataset-specific
+# prototype that the architecture consolidation folded into erp_pipeline. No
+# module under src/, scripts/ or tests/ imports it any more.
 sqlalchemy
 psycopg2-binary
 python-dotenv

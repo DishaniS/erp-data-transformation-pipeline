@@ -1,0 +1,145 @@
+{
+  "generated_at": "2026-08-25T11:47:56.057190+00:00",
+  "claim": "near-real-time synchronisation: freshness is bounded by the configured interval plus processing time. This is NOT CDC and not replication - the sync engine polls with a watermark.",
+  "environment": {
+    "executor": "inline, in-process",
+    "clock": "injected - nothing sleeps",
+    "note": "processing latencies are in-process pipeline time only; the end-to-end source-change-to-searchable figure adds the configured interval"
+  },
+  "configured_interval_seconds": 5.0,
+  "changes": [
+    {
+      "change": "EMP002 initial",
+      "kind": "insert",
+      "representations": 2,
+      "slots_promoted": 2,
+      "superseded": 0,
+      "stale_removed": 0,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 1.114,
+      "index_to_current_ms": 1.048
+    },
+    {
+      "change": "EMP003 initial",
+      "kind": "insert",
+      "representations": 2,
+      "slots_promoted": 2,
+      "superseded": 0,
+      "stale_removed": 0,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 0.805,
+      "index_to_current_ms": 0.735
+    },
+    {
+      "change": "EMP002 department Finance -> Audit",
+      "kind": "structured_update",
+      "representations": 2,
+      "slots_promoted": 0,
+      "superseded": 0,
+      "stale_removed": 0,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 0.807,
+      "index_to_current_ms": 0.746
+    },
+    {
+      "change": "EMP002 certificate A -> B",
+      "kind": "blob_replacement",
+      "representations": 2,
+      "slots_promoted": 1,
+      "superseded": 1,
+      "stale_removed": 1,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 1.54,
+      "index_to_current_ms": 1.473
+    },
+    {
+      "change": "EMP002 certificate -> long",
+      "kind": "blob_grow",
+      "representations": 6,
+      "slots_promoted": 1,
+      "superseded": 1,
+      "stale_removed": 1,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 1.954,
+      "index_to_current_ms": 1.86
+    },
+    {
+      "change": "EMP002 certificate long -> short",
+      "kind": "blob_shrink",
+      "representations": 2,
+      "slots_promoted": 1,
+      "superseded": 5,
+      "stale_removed": 5,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 0.948,
+      "index_to_current_ms": 0.884
+    },
+    {
+      "change": "EMP004 inserted",
+      "kind": "insert",
+      "representations": 2,
+      "slots_promoted": 2,
+      "superseded": 0,
+      "stale_removed": 0,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 0.779,
+      "index_to_current_ms": 0.709
+    },
+    {
+      "change": "EMP004 re-synced unchanged",
+      "kind": "no_change",
+      "representations": 2,
+      "slots_promoted": 0,
+      "superseded": 0,
+      "stale_removed": 0,
+      "stale_deferred": 0,
+      "not_searchable": 0,
+      "stale_still_visible": 0,
+      "processing_ms": 0.629,
+      "index_to_current_ms": 0.566
+    }
+  ],
+  "scheduler": {
+    "ticks": 10,
+    "syncs_submitted_when_free": 10,
+    "concurrent_starts_while_running": 0,
+    "duplicate_submissions_in_one_tick": 0,
+    "submissions_while_disabled": 0
+  },
+  "lifecycle": {
+    "representations_indexed": 13,
+    "lifecycle_entries": 13,
+    "pending_cleanup": 1,
+    "retired_on_delete": 1
+  },
+  "gates": {
+    "source_changes_permanently_missed": 0,
+    "wrong_current_version_hits": 0,
+    "duplicate_concurrent_source_syncs": 0,
+    "watermark_regressions": 0,
+    "cross_parent_deletion_errors": 0,
+    "unresolvable_current_hits": 0,
+    "idempotence_violations": 0
+  },
+  "latency_ms": {
+    "processing_median": 0.877,
+    "processing_p95": 1.54,
+    "processing_max": 1.954,
+    "bounded_freshness_seconds": "interval 5.0s + processing 0.001s (median)"
+  },
+  "passed": true
+}

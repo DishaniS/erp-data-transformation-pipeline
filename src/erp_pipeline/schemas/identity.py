@@ -1,29 +1,23 @@
 """Deterministic identity rules for the canonical ERP model.
 
-Relationship to Phase 0
------------------------
-``src/bpi2020/common/stable_ids.py`` established the identity contract for the
-BPI prototype. This module restates the same *principles* for the generic
-framework without importing that package, so ``erp_pipeline`` carries no
-dependency on a source-specific prototype:
-
+The rules, and why each one exists
+----------------------------------
     deterministic          the same logical record always yields the same id
     source-independent     no engine-specific concept appears in the id
     no database SERIALs    identity never comes from an auto-increment column
     safely normalized      ids are safe in files, URLs and payload filters
     reproducible           reruns and rebuilds produce identical ids
 
-``normalize_identifier`` is intentionally the same algorithm as Phase 0's
-``normalize_key_component``. A test asserts the two agree byte-for-byte on a
-shared corpus, so the two packages can never drift into producing different
-ids for the same input.
+The third rule is the one learned the hard way. Identity taken from a
+PostgreSQL ``SERIAL`` changes whenever its table is rebuilt, which silently
+re-identifies every derived record and orphans every stored vector. The symptom
+appears long after the cause, so ``looks_like_surrogate_key`` and
+``require_business_key`` refuse it at the point of construction instead.
 
-The two id namespaces are disjoint by construction:
-
-    Phase 0 (bpi2020)     event:...   case:...   document:...
-    Phase 1 (erp_pipeline) erp:...
-
-so records from both schemes can coexist in one store without collision.
+``normalize_identifier`` is pinned byte-for-byte by a frozen corpus in
+``tests/erp_pipeline/test_identity_and_serialization.py``. Changing it
+re-identifies every stored record, so it is a MAJOR contract change and must
+never happen by accident.
 
 Canonical record id format
 --------------------------
@@ -60,13 +54,19 @@ CANONICAL_ID_SEPARATOR = ":"
 DOCUMENT_ENTITY_TYPE = "document"
 
 # Namespace prefix for derived UUIDv5 values handed to external systems.
-# Phase 0 uses "bpi2020" for the same purpose; the algorithm is identical and
-# only the prefix differs, which is what keeps the two id spaces separate.
+# Two deployments that shared a vector store would collide on the same record
+# id without it, so the prefix is part of the derivation rather than cosmetic.
 UUID_NAMESPACE_PREFIX = "erp_pipeline"
 
 _UNSAFE_CHARS = re.compile(r"[^a-z0-9_.\-]")
 _REPEATED_UNDERSCORE = re.compile(r"_+")
 _WHITESPACE = re.compile(r"\s+")
+
+# A value that is nothing but digits. This is the ONE shape that is
+# unambiguously a database surrogate key rather than a business key, so it is
+# the only shape flagged. Anything broader produces false positives on real ERP
+# keys ("INV-001", "declaration 100000"), which would make the guard unusable.
+_SURROGATE_KEY = re.compile(r"^\d+$")
 
 
 class IdentityError(ValueError):
@@ -133,6 +133,60 @@ def is_normalized_identifier(value: object) -> bool:
         return normalize_identifier(value) == value
     except IdentityError:
         return False
+
+
+def looks_like_surrogate_key(value: object) -> bool:
+    """True when ``value`` is a bare integer, and therefore not a business key.
+
+    A value consisting only of digits (``4471``, ``"4471"``) is the classic
+    symptom of identity taken from a PostgreSQL ``SERIAL`` or a row offset. Such
+    a value changes whenever the source table is rebuilt, which silently
+    re-identifies every derived record and orphans every stored vector.
+
+    DELIBERATELY NARROW. Only the digits-only shape is flagged, because it is
+    the only shape that is unambiguous. Real ERP business keys frequently
+    contain digits (``"INV-001"``, ``"declaration 100000"``, ``"cus-44"``) and
+    flagging those would make the guard unusable on real data.
+
+    Composed identifiers such as the legacy ``case_4471`` are detected by
+    applying this check to the *stable-key component* of a parsed canonical id
+    rather than by widening the pattern here - see
+    ``erp_pipeline.verification.record_integrity.check_record_identity``.
+    """
+    if isinstance(value, bool):
+        return False
+
+    if isinstance(value, int):
+        return True
+
+    if not isinstance(value, str):
+        return False
+
+    return bool(_SURROGATE_KEY.match(value.strip()))
+
+
+def require_business_key(value: Any, context: str = "identifier") -> Any:
+    """Return ``value``, or refuse it when it looks like a surrogate key.
+
+    The invariant this enforces was learned the hard way in the BPI prototype:
+    vector identity derived from a ``SERIAL`` silently re-identified every
+    record whenever the source table was rebuilt, orphaning every stored
+    vector. Refusing loudly at the point of construction is far cheaper than
+    discovering it after an embedding run.
+
+    Call this wherever an identifier crosses a layer boundary - into a
+    canonical id, a representation id, or a vector point id.
+    """
+    if looks_like_surrogate_key(value):
+        raise IdentityError(
+            f"{context} {value!r} is a bare integer, which is a database "
+            "surrogate key rather than a business key. Identity that comes "
+            "from an auto-increment column changes whenever the source is "
+            "reloaded, which orphans every derived record and vector. Use the "
+            "record's own business key instead."
+        )
+
+    return value
 
 
 def make_canonical_record_id(
@@ -291,6 +345,8 @@ __all__ = [
     "IdentityError",
     "normalize_identifier",
     "is_normalized_identifier",
+    "looks_like_surrogate_key",
+    "require_business_key",
     "make_canonical_record_id",
     "make_canonical_document_id",
     "parse_canonical_id",

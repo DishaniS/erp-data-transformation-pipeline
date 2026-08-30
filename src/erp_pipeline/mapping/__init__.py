@@ -51,7 +51,7 @@ candidates, the same order and the same profile identity.
 It reads SCHEMAS, never DATA: no business value, document, row or example
 payload is required or consulted.
 
-This package never imports ``bpi2020``.
+This package never imports a dataset-specific module.
 """
 
 from __future__ import annotations

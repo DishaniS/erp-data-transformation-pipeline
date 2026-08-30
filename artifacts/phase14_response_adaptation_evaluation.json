@@ -1,0 +1,2302 @@
+{
+  "ablation": {
+    "question": "What does deterministic query relevance contribute, holding unwrapping, canonical mapping and budgets identical?",
+    "with_query_relevance": {
+      "adaptation_success_rate": 1.0,
+      "cases": 68,
+      "cases_with_perfect_recall": 0.955882,
+      "context_reduction_ratio": 0.500405,
+      "field_reduction_ratio": 0.4736,
+      "irrelevant_field_removal_rate": 0.608889,
+      "latency_ms": {
+        "mean": 18.2716,
+        "median": 18.0797,
+        "p95": 26.1997
+      },
+      "relevant_field_recall": 0.979866,
+      "totals": {
+        "input_bytes": 16049,
+        "input_fields": 625,
+        "irrelevant_fields_labelled": 225,
+        "irrelevant_fields_removed": 137,
+        "output_bytes": 8018,
+        "output_fields": 329,
+        "relevant_fields_kept": 146,
+        "relevant_fields_labelled": 149
+      }
+    },
+    "without_query_relevance": {
+      "adaptation_success_rate": 1.0,
+      "cases": 68,
+      "cases_with_perfect_recall": 1.0,
+      "context_reduction_ratio": 0.1673,
+      "field_reduction_ratio": 0.1168,
+      "irrelevant_field_removal_rate": 0.0,
+      "latency_ms": {
+        "mean": 18.2985,
+        "median": 17.9557,
+        "p95": 27.6495
+      },
+      "relevant_field_recall": 1.0,
+      "totals": {
+        "input_bytes": 16049,
+        "input_fields": 625,
+        "irrelevant_fields_labelled": 225,
+        "irrelevant_fields_removed": 0,
+        "output_bytes": 13364,
+        "output_fields": 552,
+        "relevant_fields_kept": 149,
+        "relevant_fields_labelled": 149
+      }
+    }
+  },
+  "config_fingerprint": "adapt@1.0/w(alias=0.45/entity=0.15/identity=0.1/name=0.3)/policy(sens=[]/fields=[])/min=0.25/max_fields=24/max_chars=8000/max_value=2000/relevance=1/mapping=1",
+  "configuration": {
+    "broad_query_terms": 10,
+    "max_fields": 24,
+    "max_output_characters": 8000,
+    "max_value_characters": 2000,
+    "minimum_relevance_score": 0.25,
+    "query_intent_lexicon_entries": 31,
+    "relevance_weights": {
+      "alias": 0.45,
+      "entity": 0.15,
+      "identity": 0.1,
+      "name": 0.3
+    }
+  },
+  "dataset": {
+    "cases": 68,
+    "category_counts": {
+      "customer": 14,
+      "document": 6,
+      "invoice": 24,
+      "process_case": 6,
+      "purchase_order": 11,
+      "receipt": 7
+    },
+    "labelled_irrelevant_fields": 225,
+    "labelled_relevant_fields": 149,
+    "labelling": "Single annotator (the component author). Labels were written from each question before any method was run, but no inter-annotator agreement can be reported from one annotator.",
+    "payloads": "synthetic, modelled on real ERP response shapes"
+  },
+  "engine_version": "1.0",
+  "environment": {
+    "external_services_used": [],
+    "llm_used": false,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.9"
+  },
+  "generated_at": "2026-08-22T04:07:55.081927+00:00",
+  "limitations": [
+    {
+      "case_id": "sap-04",
+      "cause": "insufficient_erp_vocabulary",
+      "detail": "The canonical model's invoice_id alias list does not contain SAP field mnemonics, and BELNR carries no _id/_no suffix for the identity heuristic to recognise, so the record key was dropped for a question that did not name it. Adding SAP aliases after observing this failure would be fitting the vocabulary to the test set, so the vocabulary was left unchanged.",
+      "missed_field": "BELNR"
+    },
+    {
+      "case_id": "po-05",
+      "cause": "insufficient_query_vocabulary",
+      "detail": "The question asks 'from whom'. The intent lexicon contains 'who' but not its objective inflection 'whom', so the supplier field was never reached. Left unchanged for the same reason as above.",
+      "missed_field": "supplier_no"
+    },
+    {
+      "case_id": "proc-02",
+      "cause": "insufficient_query_vocabulary",
+      "detail": "'Who performed this activity' should reach the 'resource' field, which is process-mining vocabulary for the actor. The lexicon maps 'who' onto customer/supplier/name only. Left unchanged.",
+      "missed_field": "resource"
+    }
+  ],
+  "methods": {
+    "erp_aware_adaptive": {
+      "adaptation_success_rate": 1.0,
+      "cases": 68,
+      "cases_with_perfect_recall": 0.955882,
+      "context_reduction_ratio": 0.500405,
+      "description": "proposed: unwrap, canonical ERP mapping, deterministic query relevance, mandatory identity preservation, budgets",
+      "field_reduction_ratio": 0.4736,
+      "irrelevant_field_removal_rate": 0.608889,
+      "latency_ms": {
+        "mean": 16.49,
+        "median": 15.8268,
+        "p95": 24.0542
+      },
+      "relevant_field_recall": 0.979866,
+      "totals": {
+        "input_bytes": 16049,
+        "input_fields": 625,
+        "irrelevant_fields_labelled": 225,
+        "irrelevant_fields_removed": 137,
+        "output_bytes": 8018,
+        "output_fields": 329,
+        "relevant_fields_kept": 146,
+        "relevant_fields_labelled": 149
+      }
+    },
+    "generic": {
+      "adaptation_success_rate": 1.0,
+      "cases": 68,
+      "cases_with_perfect_recall": 1.0,
+      "context_reduction_ratio": 0.143311,
+      "description": "envelope unwrapped and flattened; no ERP vocabulary and no query awareness. Given the unwrapping deliberately, so the baseline is not a straw man.",
+      "field_reduction_ratio": 0.1168,
+      "irrelevant_field_removal_rate": 0.0,
+      "latency_ms": {
+        "mean": 0.0475,
+        "median": 0.0409,
+        "p95": 0.0763
+      },
+      "relevant_field_recall": 1.0,
+      "totals": {
+        "input_bytes": 16049,
+        "input_fields": 625,
+        "irrelevant_fields_labelled": 225,
+        "irrelevant_fields_removed": 0,
+        "output_bytes": 13749,
+        "output_fields": 552,
+        "relevant_fields_kept": 149,
+        "relevant_fields_labelled": 149
+      }
+    },
+    "raw": {
+      "adaptation_success_rate": 1.0,
+      "cases": 68,
+      "cases_with_perfect_recall": 1.0,
+      "context_reduction_ratio": 0.0,
+      "description": "the ERP response verbatim, with no adaptation",
+      "field_reduction_ratio": 0.0,
+      "irrelevant_field_removal_rate": 0.0,
+      "latency_ms": {
+        "mean": 0.0003,
+        "median": 0.0002,
+        "p95": 0.0004
+      },
+      "relevant_field_recall": 1.0,
+      "totals": {
+        "input_bytes": 16049,
+        "input_fields": 625,
+        "irrelevant_fields_labelled": 225,
+        "irrelevant_fields_removed": 0,
+        "output_bytes": 16049,
+        "output_fields": 625,
+        "relevant_fields_kept": 149,
+        "relevant_fields_labelled": 149
+      }
+    }
+  },
+  "metric_notes": {
+    "context_reduction_ratio": "Measured on the canonical JSON encoding of each payload, in bytes. Characters, not tokens: this project ships no tokenizer, and an invented token count would be a guess.",
+    "field_counting": "Leaf fields on both sides for every method, so a method that removes nothing measures as removing nothing.",
+    "field_matching": "One matcher for all three methods: a label matches a produced name that equals it or ends with it on a path boundary. Required because RAW reports nested paths from the un-unwrapped root while the other two unwrap first.",
+    "latency": "Wall-clock per case, single process, no warm-up excluded. Percentiles are nearest-rank so every reported value is an observed measurement rather than an interpolation.",
+    "relevant_field_recall": "THE headline metric. A dropped relevant field cannot be recovered downstream; a retained irrelevant one only costs context. The two are reported separately rather than blended."
+  },
+  "name": "ERP-aware adaptive multimodal response transformation",
+  "per_case": [
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "invoice_id"
+      ],
+      "case_id": "inv-01",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "How much is invoice INV-2041 for?",
+      "relevant_labelled": [
+        "inv_no",
+        "total_amt"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "currency",
+        "invoice_id"
+      ],
+      "case_id": "inv-02",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "issue_dt",
+        "cust_ref"
+      ],
+      "note": null,
+      "query": "What currency is this invoice in?",
+      "relevant_labelled": [
+        "inv_no",
+        "curr"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "invoice_id"
+      ],
+      "case_id": "inv-03",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "curr",
+        "total_amt"
+      ],
+      "note": null,
+      "query": "Who is the customer on this invoice?",
+      "relevant_labelled": [
+        "inv_no",
+        "cust_ref"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "invoice_id",
+        "status"
+      ],
+      "case_id": "inv-04",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "curr",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "Has this invoice been approved?",
+      "relevant_labelled": [
+        "inv_no",
+        "approval_status"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "invoice_id",
+        "issued_on"
+      ],
+      "case_id": "inv-05",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "curr",
+        "total_amt"
+      ],
+      "note": null,
+      "query": "When was the invoice issued?",
+      "relevant_labelled": [
+        "inv_no",
+        "issue_dt"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "currency",
+        "invoice_id"
+      ],
+      "case_id": "inv-06",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "What is the total amount and the currency?",
+      "relevant_labelled": [
+        "inv_no",
+        "total_amt",
+        "curr"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "created_by",
+        "currency",
+        "customer_id",
+        "etl_batch_id",
+        "invoice_id",
+        "issued_on",
+        "last_modified_ts",
+        "row_version",
+        "status"
+      ],
+      "case_id": "inv-07",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "curr",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "What is the invoice number?",
+      "relevant_labelled": [
+        "inv_no"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "invoice_id",
+        "status"
+      ],
+      "case_id": "inv-08",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "What is the approval status and the amount?",
+      "relevant_labelled": [
+        "inv_no",
+        "approval_status",
+        "total_amt"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "customer_id",
+        "invoice_id",
+        "status"
+      ],
+      "case_id": "inv-09",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "How much does this customer owe on INV-2041?",
+      "relevant_labelled": [
+        "inv_no",
+        "total_amt",
+        "cust_ref"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "invoice_id",
+        "issued_on"
+      ],
+      "case_id": "inv-10",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "curr"
+      ],
+      "note": null,
+      "query": "What is the invoice date and the customer?",
+      "relevant_labelled": [
+        "inv_no",
+        "issue_dt",
+        "cust_ref"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "created_by",
+        "currency",
+        "customer_id",
+        "etl_batch_id",
+        "invoice_id",
+        "issued_on",
+        "last_modified_ts",
+        "row_version",
+        "status"
+      ],
+      "case_id": "inv-11",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [],
+      "note": "broad question: no field is irrelevant",
+      "query": "Give me everything about this invoice.",
+      "relevant_labelled": [
+        "inv_no",
+        "cust_ref",
+        "total_amt",
+        "curr",
+        "approval_status",
+        "issue_dt"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "created_by",
+        "currency",
+        "customer_id",
+        "etl_batch_id",
+        "invoice_id",
+        "issued_on",
+        "last_modified_ts",
+        "row_version",
+        "status"
+      ],
+      "case_id": "inv-12",
+      "entity": "invoice",
+      "input_fields": 12,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "created_by",
+        "last_modified_ts",
+        "issue_dt"
+      ],
+      "note": null,
+      "query": "Is the invoice in euros?",
+      "relevant_labelled": [
+        "inv_no",
+        "curr"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "AEDAT",
+        "BELNR",
+        "BLDAT",
+        "ERNAM",
+        "KUNNR",
+        "MANDT",
+        "NETWR",
+        "STATUS",
+        "WAERS"
+      ],
+      "case_id": "sap-01",
+      "entity": "invoice",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "MANDT",
+        "AEDAT",
+        "ERNAM",
+        "BLDAT"
+      ],
+      "note": "opaque vendor field names",
+      "query": "How much is this invoice for?",
+      "relevant_labelled": [
+        "BELNR",
+        "NETWR"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "AEDAT",
+        "BELNR",
+        "BLDAT",
+        "ERNAM",
+        "KUNNR",
+        "MANDT",
+        "NETWR",
+        "STATUS",
+        "WAERS"
+      ],
+      "case_id": "sap-02",
+      "entity": "invoice",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "MANDT",
+        "AEDAT",
+        "ERNAM",
+        "BLDAT"
+      ],
+      "note": null,
+      "query": "What currency?",
+      "relevant_labelled": [
+        "BELNR",
+        "WAERS"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "AEDAT",
+        "BELNR",
+        "BLDAT",
+        "ERNAM",
+        "KUNNR",
+        "MANDT",
+        "NETWR",
+        "STATUS",
+        "WAERS"
+      ],
+      "case_id": "sap-03",
+      "entity": "invoice",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "MANDT",
+        "AEDAT",
+        "ERNAM",
+        "BLDAT"
+      ],
+      "note": null,
+      "query": "Which customer does this belong to?",
+      "relevant_labelled": [
+        "BELNR",
+        "KUNNR"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [
+        "BELNR"
+      ],
+      "adaptive_output_fields": [
+        "STATUS"
+      ],
+      "case_id": "sap-04",
+      "entity": "invoice",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "MANDT",
+        "AEDAT",
+        "ERNAM",
+        "BLDAT"
+      ],
+      "note": null,
+      "query": "What is the status of this invoice?",
+      "relevant_labelled": [
+        "BELNR",
+        "STATUS"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "AEDAT",
+        "BELNR",
+        "BLDAT",
+        "ERNAM",
+        "KUNNR",
+        "MANDT",
+        "NETWR",
+        "STATUS",
+        "WAERS"
+      ],
+      "case_id": "sap-05",
+      "entity": "invoice",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "MANDT",
+        "AEDAT",
+        "ERNAM",
+        "WAERS"
+      ],
+      "note": null,
+      "query": "What is the document date?",
+      "relevant_labelled": [
+        "BELNR",
+        "BLDAT"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "AEDAT",
+        "BELNR",
+        "BLDAT",
+        "ERNAM",
+        "KUNNR",
+        "MANDT",
+        "NETWR",
+        "STATUS",
+        "WAERS"
+      ],
+      "case_id": "sap-06",
+      "entity": "invoice",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "MANDT",
+        "AEDAT",
+        "ERNAM",
+        "BLDAT",
+        "WAERS"
+      ],
+      "note": null,
+      "query": "What is the invoice number?",
+      "relevant_labelled": [
+        "BELNR"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "invoice_id"
+      ],
+      "case_id": "flat-01",
+      "entity": "invoice",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "internal_seq",
+        "sync_token",
+        "document_date"
+      ],
+      "note": "no envelope to unwrap",
+      "query": "How much is invoice INV-3312 for?",
+      "relevant_labelled": [
+        "invoice_number",
+        "grand_total"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "invoice_id",
+        "status"
+      ],
+      "case_id": "flat-02",
+      "entity": "invoice",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "internal_seq",
+        "sync_token",
+        "document_date"
+      ],
+      "note": null,
+      "query": "Was this invoice rejected?",
+      "relevant_labelled": [
+        "invoice_number",
+        "invoice_status"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "invoice_id"
+      ],
+      "case_id": "flat-03",
+      "entity": "invoice",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "internal_seq",
+        "sync_token",
+        "document_date"
+      ],
+      "note": null,
+      "query": "Which customer is it for?",
+      "relevant_labelled": [
+        "invoice_number",
+        "customer_number"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "currency",
+        "invoice_id"
+      ],
+      "case_id": "flat-04",
+      "entity": "invoice",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "internal_seq",
+        "sync_token",
+        "document_date"
+      ],
+      "note": null,
+      "query": "What currency is the total in?",
+      "relevant_labelled": [
+        "invoice_number",
+        "currency_code"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "invoice_id",
+        "issued_on"
+      ],
+      "case_id": "flat-05",
+      "entity": "invoice",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "internal_seq",
+        "sync_token",
+        "currency_code"
+      ],
+      "note": null,
+      "query": "When is the document dated?",
+      "relevant_labelled": [
+        "invoice_number",
+        "document_date"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "invoice_id",
+        "status"
+      ],
+      "case_id": "flat-06",
+      "entity": "invoice",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "internal_seq",
+        "sync_token",
+        "document_date"
+      ],
+      "note": null,
+      "query": "What is the status and the total?",
+      "relevant_labelled": [
+        "invoice_number",
+        "invoice_status",
+        "grand_total"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "name"
+      ],
+      "case_id": "cus-01",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on",
+        "phone_number"
+      ],
+      "note": null,
+      "query": "What is the customer's name?",
+      "relevant_labelled": [
+        "cust_id",
+        "cust_name"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "email"
+      ],
+      "case_id": "cus-02",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on",
+        "phone_number"
+      ],
+      "note": null,
+      "query": "What is their email address?",
+      "relevant_labelled": [
+        "cust_id",
+        "email_addr"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "email",
+        "phone"
+      ],
+      "case_id": "cus-03",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on"
+      ],
+      "note": null,
+      "query": "How do I contact this customer?",
+      "relevant_labelled": [
+        "cust_id",
+        "email_addr",
+        "phone_number"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "phone"
+      ],
+      "case_id": "cus-04",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on",
+        "email_addr"
+      ],
+      "note": null,
+      "query": "What is the phone number?",
+      "relevant_labelled": [
+        "cust_id",
+        "phone_number"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "created_on",
+        "customer_id",
+        "email",
+        "etl_batch_id",
+        "name",
+        "phone",
+        "record_status",
+        "row_version"
+      ],
+      "case_id": "cus-05",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on",
+        "email_addr"
+      ],
+      "note": null,
+      "query": "Is this customer active?",
+      "relevant_labelled": [
+        "cust_id",
+        "record_status"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "created_on",
+        "customer_id",
+        "email",
+        "etl_batch_id",
+        "name",
+        "phone",
+        "record_status",
+        "row_version"
+      ],
+      "case_id": "cus-06",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on",
+        "phone_number"
+      ],
+      "note": null,
+      "query": "What is the customer id?",
+      "relevant_labelled": [
+        "cust_id"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "created_on",
+        "customer_id",
+        "email",
+        "etl_batch_id",
+        "name",
+        "phone",
+        "record_status",
+        "row_version"
+      ],
+      "case_id": "cus-07",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "email_addr",
+        "phone_number"
+      ],
+      "note": null,
+      "query": "When was the customer created?",
+      "relevant_labelled": [
+        "cust_id",
+        "created_on"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "created_on",
+        "customer_id",
+        "email",
+        "etl_batch_id",
+        "name",
+        "phone",
+        "record_status",
+        "row_version"
+      ],
+      "case_id": "cus-08",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [],
+      "note": "broad question",
+      "query": "Give me the full customer record.",
+      "relevant_labelled": [
+        "cust_id",
+        "cust_name",
+        "email_addr",
+        "phone_number",
+        "record_status",
+        "created_on"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "name"
+      ],
+      "case_id": "cus-09",
+      "entity": "customer",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "etl_batch_id",
+        "row_version",
+        "created_on"
+      ],
+      "note": null,
+      "query": "Who is this customer and what is their name?",
+      "relevant_labelled": [
+        "cust_id",
+        "cust_name"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "email"
+      ],
+      "case_id": "nest-01",
+      "entity": "customer",
+      "input_fields": 6,
+      "irrelevant_labelled": [
+        "audit.created_by",
+        "audit.updated_by"
+      ],
+      "note": "nested field, dotted path",
+      "query": "What is the email address?",
+      "relevant_labelled": [
+        "contact.email"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "email",
+        "phone"
+      ],
+      "case_id": "nest-02",
+      "entity": "customer",
+      "input_fields": 6,
+      "irrelevant_labelled": [
+        "audit.created_by",
+        "audit.updated_by"
+      ],
+      "note": null,
+      "query": "How do I reach them by phone?",
+      "relevant_labelled": [
+        "contact.phone"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "customer_id",
+        "name"
+      ],
+      "case_id": "nest-03",
+      "entity": "customer",
+      "input_fields": 6,
+      "irrelevant_labelled": [
+        "audit.created_by",
+        "audit.updated_by"
+      ],
+      "note": null,
+      "query": "What is the company called?",
+      "relevant_labelled": [
+        "display_name"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "audit.created_by",
+        "audit.updated_by",
+        "customer_id",
+        "email",
+        "name",
+        "phone"
+      ],
+      "case_id": "nest-04",
+      "entity": "customer",
+      "input_fields": 6,
+      "irrelevant_labelled": [
+        "audit.created_by",
+        "audit.updated_by"
+      ],
+      "note": null,
+      "query": "What is the customer id?",
+      "relevant_labelled": [
+        "customerid"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "audit.created_by",
+        "audit.updated_by",
+        "customer_id",
+        "email",
+        "name",
+        "phone"
+      ],
+      "case_id": "nest-05",
+      "entity": "customer",
+      "input_fields": 6,
+      "irrelevant_labelled": [
+        "audit.created_by",
+        "audit.updated_by"
+      ],
+      "note": null,
+      "query": "Give me their contact details.",
+      "relevant_labelled": [
+        "contact.email",
+        "contact.phone"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "purchase_order_id"
+      ],
+      "case_id": "po-01",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "requisition_ref"
+      ],
+      "note": null,
+      "query": "What is the total on this purchase order?",
+      "relevant_labelled": [
+        "po_no",
+        "order_total"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "purchase_order_id",
+        "supplier_id"
+      ],
+      "case_id": "po-02",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "requisition_ref"
+      ],
+      "note": null,
+      "query": "Which supplier is this order with?",
+      "relevant_labelled": [
+        "po_no",
+        "supplier_no"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "etl_batch_id",
+        "purchase_order_id",
+        "requisition_ref",
+        "row_version",
+        "status",
+        "supplier_id"
+      ],
+      "case_id": "po-03",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "requisition_ref"
+      ],
+      "note": null,
+      "query": "Is the order still open?",
+      "relevant_labelled": [
+        "po_no",
+        "order_status"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "etl_batch_id",
+        "purchase_order_id",
+        "requisition_ref",
+        "row_version",
+        "status",
+        "supplier_id"
+      ],
+      "case_id": "po-04",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "requisition_ref"
+      ],
+      "note": null,
+      "query": "What is the PO number?",
+      "relevant_labelled": [
+        "po_no"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [
+        "supplier_no"
+      ],
+      "adaptive_output_fields": [
+        "amount",
+        "purchase_order_id"
+      ],
+      "case_id": "po-05",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "requisition_ref"
+      ],
+      "note": null,
+      "query": "How much did we order and from whom?",
+      "relevant_labelled": [
+        "po_no",
+        "order_total",
+        "supplier_no"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "purchase_order_id",
+        "status",
+        "supplier_id"
+      ],
+      "case_id": "po-06",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [
+        "row_version",
+        "etl_batch_id",
+        "requisition_ref"
+      ],
+      "note": null,
+      "query": "What is the order status and the vendor?",
+      "relevant_labelled": [
+        "po_no",
+        "order_status",
+        "supplier_no"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "etl_batch_id",
+        "purchase_order_id",
+        "requisition_ref",
+        "row_version",
+        "status",
+        "supplier_id"
+      ],
+      "case_id": "po-07",
+      "entity": "purchase_order",
+      "input_fields": 8,
+      "irrelevant_labelled": [],
+      "note": "broad question",
+      "query": "Give me the whole purchase order.",
+      "relevant_labelled": [
+        "po_no",
+        "supplier_no",
+        "order_total",
+        "order_status"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "purchase_order_id"
+      ],
+      "case_id": "polist-01",
+      "entity": "purchase_order",
+      "input_fields": 7,
+      "irrelevant_labelled": [
+        "internal_seq"
+      ],
+      "note": "list envelope; only the first record is adapted",
+      "query": "What is the total on this order?",
+      "relevant_labelled": [
+        "po_number",
+        "total_amount"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "purchase_order_id",
+        "supplier_id"
+      ],
+      "case_id": "polist-02",
+      "entity": "purchase_order",
+      "input_fields": 7,
+      "irrelevant_labelled": [
+        "internal_seq"
+      ],
+      "note": null,
+      "query": "Which vendor supplied it?",
+      "relevant_labelled": [
+        "po_number",
+        "vendor_id"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "internal_seq",
+        "purchase_order_id",
+        "status",
+        "supplier_id"
+      ],
+      "case_id": "polist-03",
+      "entity": "purchase_order",
+      "input_fields": 7,
+      "irrelevant_labelled": [
+        "internal_seq"
+      ],
+      "note": null,
+      "query": "Is it closed?",
+      "relevant_labelled": [
+        "po_number",
+        "state"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "amount",
+        "internal_seq",
+        "purchase_order_id",
+        "status",
+        "supplier_id"
+      ],
+      "case_id": "polist-04",
+      "entity": "purchase_order",
+      "input_fields": 7,
+      "irrelevant_labelled": [
+        "internal_seq"
+      ],
+      "note": null,
+      "query": "What is the order number?",
+      "relevant_labelled": [
+        "po_number"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "activity",
+        "case_id"
+      ],
+      "case_id": "proc-01",
+      "entity": "process_case",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "variant_index",
+        "trace_hash",
+        "etl_batch_id"
+      ],
+      "note": "no canonical entity covers this response",
+      "query": "Which activity was performed?",
+      "relevant_labelled": [
+        "case_id",
+        "activity"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [
+        "resource"
+      ],
+      "adaptive_output_fields": [
+        "activity",
+        "case_id"
+      ],
+      "case_id": "proc-02",
+      "entity": "process_case",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "variant_index",
+        "trace_hash",
+        "etl_batch_id"
+      ],
+      "note": null,
+      "query": "Who performed this activity?",
+      "relevant_labelled": [
+        "case_id",
+        "resource"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "activity",
+        "case_id",
+        "end_timestamp",
+        "etl_batch_id",
+        "resource",
+        "start_timestamp",
+        "trace_hash",
+        "variant_index"
+      ],
+      "case_id": "proc-03",
+      "entity": "process_case",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "variant_index",
+        "trace_hash",
+        "etl_batch_id"
+      ],
+      "note": null,
+      "query": "When did the case start?",
+      "relevant_labelled": [
+        "case_id",
+        "start_timestamp"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "activity",
+        "case_id",
+        "end_timestamp",
+        "etl_batch_id",
+        "resource",
+        "start_timestamp",
+        "trace_hash",
+        "variant_index"
+      ],
+      "case_id": "proc-04",
+      "entity": "process_case",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "variant_index",
+        "trace_hash",
+        "etl_batch_id"
+      ],
+      "note": null,
+      "query": "What is the case id?",
+      "relevant_labelled": [
+        "case_id"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "activity",
+        "case_id",
+        "end_timestamp",
+        "etl_batch_id",
+        "resource",
+        "start_timestamp",
+        "trace_hash",
+        "variant_index"
+      ],
+      "case_id": "proc-05",
+      "entity": "process_case",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "variant_index",
+        "trace_hash",
+        "etl_batch_id"
+      ],
+      "note": null,
+      "query": "When did it start and end?",
+      "relevant_labelled": [
+        "case_id",
+        "start_timestamp",
+        "end_timestamp"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "activity",
+        "case_id",
+        "resource"
+      ],
+      "case_id": "proc-06",
+      "entity": "process_case",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "variant_index",
+        "trace_hash",
+        "etl_batch_id"
+      ],
+      "note": null,
+      "query": "What activity and which resource?",
+      "relevant_labelled": [
+        "case_id",
+        "activity",
+        "resource"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "checksum",
+        "classification",
+        "doc_id",
+        "effective_date",
+        "owner",
+        "revision",
+        "storage_key",
+        "title"
+      ],
+      "case_id": "doc-01",
+      "entity": "document",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "checksum",
+        "storage_key",
+        "revision"
+      ],
+      "note": null,
+      "query": "What is this policy called?",
+      "relevant_labelled": [
+        "doc_id",
+        "title"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "checksum",
+        "classification",
+        "doc_id",
+        "effective_date",
+        "owner",
+        "revision",
+        "storage_key",
+        "title"
+      ],
+      "case_id": "doc-02",
+      "entity": "document",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "checksum",
+        "storage_key",
+        "revision"
+      ],
+      "note": null,
+      "query": "When did the policy take effect?",
+      "relevant_labelled": [
+        "doc_id",
+        "effective_date"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "checksum",
+        "classification",
+        "doc_id",
+        "effective_date",
+        "owner",
+        "revision",
+        "storage_key",
+        "title"
+      ],
+      "case_id": "doc-03",
+      "entity": "document",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "checksum",
+        "storage_key",
+        "revision"
+      ],
+      "note": null,
+      "query": "Who owns this document?",
+      "relevant_labelled": [
+        "doc_id",
+        "owner"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "checksum",
+        "classification",
+        "doc_id",
+        "effective_date",
+        "owner",
+        "revision",
+        "storage_key",
+        "title"
+      ],
+      "case_id": "doc-04",
+      "entity": "document",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "checksum",
+        "storage_key",
+        "revision"
+      ],
+      "note": null,
+      "query": "How is this document classified?",
+      "relevant_labelled": [
+        "doc_id",
+        "classification"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "checksum",
+        "classification",
+        "doc_id",
+        "effective_date",
+        "owner",
+        "revision",
+        "storage_key",
+        "title"
+      ],
+      "case_id": "doc-05",
+      "entity": "document",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "checksum",
+        "storage_key",
+        "revision"
+      ],
+      "note": null,
+      "query": "What is the document id?",
+      "relevant_labelled": [
+        "doc_id"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "doc_id",
+        "owner",
+        "title"
+      ],
+      "case_id": "doc-06",
+      "entity": "document",
+      "input_fields": 9,
+      "irrelevant_labelled": [
+        "checksum",
+        "storage_key",
+        "revision"
+      ],
+      "note": null,
+      "query": "What is the title and the owner?",
+      "relevant_labelled": [
+        "doc_id",
+        "title",
+        "owner"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "receipt_no",
+        "total_amount"
+      ],
+      "case_id": "rcp-01",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "image_width",
+        "image_height",
+        "ocr_confidence",
+        "upload_batch"
+      ],
+      "note": null,
+      "query": "How much was this receipt for?",
+      "relevant_labelled": [
+        "receipt_no",
+        "total_amount"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "merchant_name",
+        "receipt_no"
+      ],
+      "case_id": "rcp-02",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "image_width",
+        "image_height",
+        "ocr_confidence",
+        "upload_batch"
+      ],
+      "note": null,
+      "query": "Which merchant issued it?",
+      "relevant_labelled": [
+        "receipt_no",
+        "merchant_name"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "currency_code",
+        "receipt_no"
+      ],
+      "case_id": "rcp-03",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "image_width",
+        "image_height",
+        "ocr_confidence",
+        "upload_batch"
+      ],
+      "note": null,
+      "query": "What currency was it in?",
+      "relevant_labelled": [
+        "receipt_no",
+        "currency_code"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "captured_on",
+        "currency_code",
+        "image_height",
+        "image_width",
+        "merchant_name",
+        "ocr_confidence",
+        "receipt_no",
+        "total_amount",
+        "upload_batch"
+      ],
+      "case_id": "rcp-04",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "image_width",
+        "image_height",
+        "ocr_confidence",
+        "upload_batch"
+      ],
+      "note": null,
+      "query": "When was the receipt captured?",
+      "relevant_labelled": [
+        "receipt_no",
+        "captured_on"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "captured_on",
+        "currency_code",
+        "image_height",
+        "image_width",
+        "merchant_name",
+        "ocr_confidence",
+        "receipt_no",
+        "total_amount",
+        "upload_batch"
+      ],
+      "case_id": "rcp-05",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "image_width",
+        "image_height",
+        "ocr_confidence",
+        "upload_batch"
+      ],
+      "note": null,
+      "query": "What is the receipt number?",
+      "relevant_labelled": [
+        "receipt_no"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "merchant_name",
+        "receipt_no",
+        "total_amount"
+      ],
+      "case_id": "rcp-06",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [
+        "image_width",
+        "image_height",
+        "ocr_confidence",
+        "upload_batch"
+      ],
+      "note": null,
+      "query": "How much and from which merchant?",
+      "relevant_labelled": [
+        "receipt_no",
+        "total_amount",
+        "merchant_name"
+      ]
+    },
+    {
+      "adaptive_missed_relevant": [],
+      "adaptive_output_fields": [
+        "captured_on",
+        "currency_code",
+        "image_height",
+        "image_width",
+        "merchant_name",
+        "ocr_confidence",
+        "receipt_no",
+        "total_amount",
+        "upload_batch"
+      ],
+      "case_id": "rcp-07",
+      "entity": "receipt",
+      "input_fields": 10,
+      "irrelevant_labelled": [],
+      "note": "broad question",
+      "query": "Give me the receipt details.",
+      "relevant_labelled": [
+        "receipt_no",
+        "merchant_name",
+        "total_amount",
+        "currency_code",
+        "captured_on"
+      ]
+    }
+  ],
+  "per_category": {
+    "customer": {
+      "erp_aware_adaptive": {
+        "adaptation_success_rate": 1.0,
+        "cases": 14,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.470551,
+        "field_reduction_ratio": 0.441441,
+        "irrelevant_field_removal_rate": 0.6,
+        "latency_ms": {
+          "mean": 15.3377,
+          "median": 13.6213,
+          "p95": 22.1564
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 3158,
+          "input_fields": 111,
+          "irrelevant_fields_labelled": 40,
+          "irrelevant_fields_removed": 24,
+          "output_bytes": 1672,
+          "output_fields": 62,
+          "relevant_fields_kept": 28,
+          "relevant_fields_labelled": 28
+        }
+      },
+      "generic": {
+        "adaptation_success_rate": 1.0,
+        "cases": 14,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.065231,
+        "field_reduction_ratio": 0.081081,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.052,
+          "median": 0.0406,
+          "p95": 0.0763
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 3158,
+          "input_fields": 111,
+          "irrelevant_fields_labelled": 40,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 2952,
+          "output_fields": 102,
+          "relevant_fields_kept": 28,
+          "relevant_fields_labelled": 28
+        }
+      },
+      "raw": {
+        "adaptation_success_rate": 1.0,
+        "cases": 14,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.0,
+        "field_reduction_ratio": 0.0,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0002,
+          "median": 0.0002,
+          "p95": 0.0004
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 3158,
+          "input_fields": 111,
+          "irrelevant_fields_labelled": 40,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 3158,
+          "output_fields": 111,
+          "relevant_fields_kept": 28,
+          "relevant_fields_labelled": 28
+        }
+      }
+    },
+    "document": {
+      "erp_aware_adaptive": {
+        "adaptation_success_rate": 1.0,
+        "cases": 6,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.205729,
+        "field_reduction_ratio": 0.203704,
+        "irrelevant_field_removal_rate": 0.166667,
+        "latency_ms": {
+          "mean": 19.9239,
+          "median": 19.3756,
+          "p95": 21.3673
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1536,
+          "input_fields": 54,
+          "irrelevant_fields_labelled": 18,
+          "irrelevant_fields_removed": 3,
+          "output_bytes": 1220,
+          "output_fields": 43,
+          "relevant_fields_kept": 12,
+          "relevant_fields_labelled": 12
+        }
+      },
+      "generic": {
+        "adaptation_success_rate": 1.0,
+        "cases": 6,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.109375,
+        "field_reduction_ratio": 0.111111,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.055,
+          "median": 0.0538,
+          "p95": 0.0782
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1536,
+          "input_fields": 54,
+          "irrelevant_fields_labelled": 18,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1368,
+          "output_fields": 48,
+          "relevant_fields_kept": 12,
+          "relevant_fields_labelled": 12
+        }
+      },
+      "raw": {
+        "adaptation_success_rate": 1.0,
+        "cases": 6,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.0,
+        "field_reduction_ratio": 0.0,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0002,
+          "median": 0.0002,
+          "p95": 0.0003
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1536,
+          "input_fields": 54,
+          "irrelevant_fields_labelled": 18,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1536,
+          "output_fields": 54,
+          "relevant_fields_kept": 12,
+          "relevant_fields_labelled": 12
+        }
+      }
+    },
+    "invoice": {
+      "erp_aware_adaptive": {
+        "adaptation_success_rate": 1.0,
+        "cases": 24,
+        "cases_with_perfect_recall": 0.958333,
+        "context_reduction_ratio": 0.605308,
+        "field_reduction_ratio": 0.551587,
+        "irrelevant_field_removal_rate": 0.68932,
+        "latency_ms": {
+          "mean": 18.31,
+          "median": 16.3156,
+          "p95": 25.6639
+        },
+        "relevant_field_recall": 0.981818,
+        "totals": {
+          "input_bytes": 5916,
+          "input_fields": 252,
+          "irrelevant_fields_labelled": 103,
+          "irrelevant_fields_removed": 71,
+          "output_bytes": 2335,
+          "output_fields": 113,
+          "relevant_fields_kept": 54,
+          "relevant_fields_labelled": 55
+        }
+      },
+      "generic": {
+        "adaptation_success_rate": 1.0,
+        "cases": 24,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.149087,
+        "field_reduction_ratio": 0.119048,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.043,
+          "median": 0.0414,
+          "p95": 0.0671
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 5916,
+          "input_fields": 252,
+          "irrelevant_fields_labelled": 103,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 5034,
+          "output_fields": 222,
+          "relevant_fields_kept": 55,
+          "relevant_fields_labelled": 55
+        }
+      },
+      "raw": {
+        "adaptation_success_rate": 1.0,
+        "cases": 24,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.0,
+        "field_reduction_ratio": 0.0,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0003,
+          "median": 0.0002,
+          "p95": 0.0007
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 5916,
+          "input_fields": 252,
+          "irrelevant_fields_labelled": 103,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 5916,
+          "output_fields": 252,
+          "relevant_fields_kept": 55,
+          "relevant_fields_labelled": 55
+        }
+      }
+    },
+    "process_case": {
+      "erp_aware_adaptive": {
+        "adaptation_success_rate": 1.0,
+        "cases": 6,
+        "cases_with_perfect_recall": 0.833333,
+        "context_reduction_ratio": 0.422,
+        "field_reduction_ratio": 0.425926,
+        "irrelevant_field_removal_rate": 0.5,
+        "latency_ms": {
+          "mean": 14.9506,
+          "median": 15.0448,
+          "p95": 16.169
+        },
+        "relevant_field_recall": 0.923077,
+        "totals": {
+          "input_bytes": 1500,
+          "input_fields": 54,
+          "irrelevant_fields_labelled": 18,
+          "irrelevant_fields_removed": 9,
+          "output_bytes": 867,
+          "output_fields": 31,
+          "relevant_fields_kept": 12,
+          "relevant_fields_labelled": 13
+        }
+      },
+      "generic": {
+        "adaptation_success_rate": 1.0,
+        "cases": 6,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.104,
+        "field_reduction_ratio": 0.111111,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0363,
+          "median": 0.0355,
+          "p95": 0.0391
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1500,
+          "input_fields": 54,
+          "irrelevant_fields_labelled": 18,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1344,
+          "output_fields": 48,
+          "relevant_fields_kept": 13,
+          "relevant_fields_labelled": 13
+        }
+      },
+      "raw": {
+        "adaptation_success_rate": 1.0,
+        "cases": 6,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.0,
+        "field_reduction_ratio": 0.0,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0001,
+          "median": 0.0001,
+          "p95": 0.0002
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1500,
+          "input_fields": 54,
+          "irrelevant_fields_labelled": 18,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1500,
+          "output_fields": 54,
+          "relevant_fields_kept": 13,
+          "relevant_fields_labelled": 13
+        }
+      }
+    },
+    "purchase_order": {
+      "erp_aware_adaptive": {
+        "adaptation_success_rate": 1.0,
+        "cases": 11,
+        "cases_with_perfect_recall": 0.909091,
+        "context_reduction_ratio": 0.540117,
+        "field_reduction_ratio": 0.47619,
+        "irrelevant_field_removal_rate": 0.636364,
+        "latency_ms": {
+          "mean": 10.8047,
+          "median": 11.0344,
+          "p95": 14.2944
+        },
+        "relevant_field_recall": 0.958333,
+        "totals": {
+          "input_bytes": 2231,
+          "input_fields": 84,
+          "irrelevant_fields_labelled": 22,
+          "irrelevant_fields_removed": 14,
+          "output_bytes": 1026,
+          "output_fields": 44,
+          "relevant_fields_kept": 23,
+          "relevant_fields_labelled": 24
+        }
+      },
+      "generic": {
+        "adaptation_success_rate": 1.0,
+        "cases": 11,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.31645,
+        "field_reduction_ratio": 0.178571,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0476,
+          "median": 0.0409,
+          "p95": 0.0654
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 2231,
+          "input_fields": 84,
+          "irrelevant_fields_labelled": 22,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1525,
+          "output_fields": 69,
+          "relevant_fields_kept": 24,
+          "relevant_fields_labelled": 24
+        }
+      },
+      "raw": {
+        "adaptation_success_rate": 1.0,
+        "cases": 11,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.0,
+        "field_reduction_ratio": 0.0,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0002,
+          "median": 0.0002,
+          "p95": 0.0004
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 2231,
+          "input_fields": 84,
+          "irrelevant_fields_labelled": 22,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 2231,
+          "output_fields": 84,
+          "relevant_fields_kept": 24,
+          "relevant_fields_labelled": 24
+        }
+      }
+    },
+    "receipt": {
+      "erp_aware_adaptive": {
+        "adaptation_success_rate": 1.0,
+        "cases": 7,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.474239,
+        "field_reduction_ratio": 0.485714,
+        "irrelevant_field_removal_rate": 0.666667,
+        "latency_ms": {
+          "mean": 19.8653,
+          "median": 18.4792,
+          "p95": 26.1609
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1708,
+          "input_fields": 70,
+          "irrelevant_fields_labelled": 24,
+          "irrelevant_fields_removed": 16,
+          "output_bytes": 898,
+          "output_fields": 36,
+          "relevant_fields_kept": 17,
+          "relevant_fields_labelled": 17
+        }
+      },
+      "generic": {
+        "adaptation_success_rate": 1.0,
+        "cases": 7,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.106557,
+        "field_reduction_ratio": 0.1,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0572,
+          "median": 0.0516,
+          "p95": 0.1074
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1708,
+          "input_fields": 70,
+          "irrelevant_fields_labelled": 24,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1526,
+          "output_fields": 63,
+          "relevant_fields_kept": 17,
+          "relevant_fields_labelled": 17
+        }
+      },
+      "raw": {
+        "adaptation_success_rate": 1.0,
+        "cases": 7,
+        "cases_with_perfect_recall": 1.0,
+        "context_reduction_ratio": 0.0,
+        "field_reduction_ratio": 0.0,
+        "irrelevant_field_removal_rate": 0.0,
+        "latency_ms": {
+          "mean": 0.0003,
+          "median": 0.0002,
+          "p95": 0.0014
+        },
+        "relevant_field_recall": 1.0,
+        "totals": {
+          "input_bytes": 1708,
+          "input_fields": 70,
+          "irrelevant_fields_labelled": 24,
+          "irrelevant_fields_removed": 0,
+          "output_bytes": 1708,
+          "output_fields": 70,
+          "relevant_fields_kept": 17,
+          "relevant_fields_labelled": 17
+        }
+      }
+    }
+  },
+  "phase": 14
+}

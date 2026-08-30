@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-08-25T08:06:45.015458+00:00",
+  "corpus": {
+    "rows": 6,
+    "binary_columns_declared": [
+      "birth_certificate",
+      "employment_contract",
+      "profile_photo",
+      "archive"
+    ],
+    "binary_values_present": 11,
+    "canonical_records": 6
+  },
+  "environment": {
+    "ocr_available": true,
+    "ocr_reason": null
+  },
+  "extraction": {
+    "outcomes": {
+      "extracted": 9,
+      "unreadable": 1,
+      "unsupported_binary": 1
+    },
+    "indexed_documents": 7,
+    "skipped": 4,
+    "ocr_assets": 1,
+    "representations_built": 7
+  },
+  "association_integrity": {
+    "vector_ids": 7,
+    "unique_vector_ids": 7,
+    "unique_representation_ids": 7,
+    "collisions": 0,
+    "documents_shared_across_records": {
+      "44d4121aa29c": [
+        "erp:legacy_hr:employees:emp002",
+        "erp:legacy_hr:employees:emp003",
+        "erp:legacy_hr:employees:emp006"
+      ],
+      "014b0e446fcb": [
+        "erp:legacy_hr:employees:emp002",
+        "erp:legacy_hr:employees:emp005",
+        "erp:legacy_hr:employees:emp006"
+      ]
+    },
+    "orphan_representations": []
+  },
+  "binary_safety": {
+    "leakage_findings": [],
+    "leakage_count": 0,
+    "surface_bytes_audited": 12731
+  },
+  "typing": {
+    "document_representations": 7,
+    "all_document_typed": true
+  },
+  "warnings": [
+    "erp:legacy_hr:employees:emp002.profile_photo: extracted but produced no text to index (status: no_content_detected)",
+    "erp:legacy_hr:employees:emp003.profile_photo: extracted but produced no text to index (status: no_content_detected)",
+    "erp:legacy_hr:employees:emp005.birth_certificate: unreadable - the content could not be read (MalformedPDFError)",
+    "erp:legacy_hr:employees:emp005.archive: unsupported_binary - the bytes match no supported document or image signature; only the fact that content exists was recorded"
+  ]
+}

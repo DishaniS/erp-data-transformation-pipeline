@@ -1,0 +1,253 @@
+{
+  "generated_at": "2026-08-25T11:10:47.088407+00:00",
+  "environment": {
+    "fetcher": "injected recorder - NO network, NO sockets opened",
+    "note": "elapsed times are in-process validation and extraction only; no internet round trip is included or simulated"
+  },
+  "cases": [
+    {
+      "case": "pdf url",
+      "employee": "EMP002",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 6.514
+    },
+    {
+      "case": "image url",
+      "employee": "EMP001",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 1510.613
+    },
+    {
+      "case": "octet-stream pdf",
+      "employee": "EMP005",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 3.144
+    },
+    {
+      "case": "mime lies (jpeg->pdf)",
+      "employee": "EMP006",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 4.369
+    },
+    {
+      "case": "signed url",
+      "employee": "EMP007",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 1.742
+    },
+    {
+      "case": "shared url A",
+      "employee": "EMP002",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 1.774
+    },
+    {
+      "case": "shared url B",
+      "employee": "EMP003",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 2.0
+    },
+    {
+      "case": "moved url",
+      "employee": "EMP002",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 2.035
+    },
+    {
+      "case": "changed content",
+      "employee": "EMP008",
+      "declared": true,
+      "outcome": "extracted",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 1,
+      "elapsed_ms": 5.562
+    },
+    {
+      "case": "private ip",
+      "employee": "EMP010",
+      "declared": true,
+      "outcome": "remote_fetch_refused",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.166
+    },
+    {
+      "case": "cloud metadata",
+      "employee": "EMP011",
+      "declared": true,
+      "outcome": "remote_fetch_refused",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.172
+    },
+    {
+      "case": "http scheme",
+      "employee": "EMP012",
+      "declared": true,
+      "outcome": "remote_fetch_refused",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.094
+    },
+    {
+      "case": "credentials in url",
+      "employee": "EMP013",
+      "declared": true,
+      "outcome": "remote_fetch_refused",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.08
+    },
+    {
+      "case": "fetching disabled",
+      "employee": "EMP014",
+      "declared": true,
+      "outcome": "remote_fetch_disabled",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.06
+    },
+    {
+      "case": "not a url",
+      "employee": "EMP015",
+      "declared": true,
+      "outcome": "invalid_url",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.058
+    },
+    {
+      "case": "undeclared field",
+      "employee": "EMP016",
+      "declared": false,
+      "outcome": "no_reference",
+      "contacted_remote": false,
+      "expected_contact": false,
+      "representations": 0,
+      "elapsed_ms": 0.018
+    },
+    {
+      "case": "redirect to private",
+      "employee": "EMP017",
+      "declared": true,
+      "outcome": "remote_fetch_refused",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 0,
+      "elapsed_ms": 0.158
+    },
+    {
+      "case": "oversized",
+      "employee": "EMP018",
+      "declared": true,
+      "outcome": "response_too_large",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 0,
+      "elapsed_ms": 0.131
+    },
+    {
+      "case": "timeout",
+      "employee": "EMP019",
+      "declared": true,
+      "outcome": "remote_fetch_failed",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 0,
+      "elapsed_ms": 0.146
+    },
+    {
+      "case": "remote 404",
+      "employee": "EMP020",
+      "declared": true,
+      "outcome": "remote_fetch_failed",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 0,
+      "elapsed_ms": 0.138
+    },
+    {
+      "case": "html page",
+      "employee": "EMP021",
+      "declared": true,
+      "outcome": "unsupported_binary",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 0,
+      "elapsed_ms": 0.168
+    },
+    {
+      "case": "zip",
+      "employee": "EMP022",
+      "declared": true,
+      "outcome": "unsupported_binary",
+      "contacted_remote": true,
+      "expected_contact": true,
+      "representations": 0,
+      "elapsed_ms": 0.177
+    }
+  ],
+  "counts": {
+    "remote_references_attempted": 21,
+    "requests_permitted": 15,
+    "requests_refused_before_contact": 6,
+    "successful_extractions": 9,
+    "representations_indexed": 9,
+    "distinct_attachments": 7
+  },
+  "gates": {
+    "private_or_internal_targets_contacted": 0,
+    "wrong_employee_matches": 0,
+    "association_collisions": 0,
+    "secret_url_leakage": 0,
+    "secret_markers": [],
+    "raw_binary_or_base64_leakage": 0,
+    "html_pages_indexed": 0,
+    "raw_url_in_vector_payload": false
+  },
+  "latency_ms": {
+    "policy_validation_median": 0.0872,
+    "fetch_and_extract_median": 1.7738,
+    "fetch_and_extract_p95": 6.5143
+  },
+  "passed": true
+}

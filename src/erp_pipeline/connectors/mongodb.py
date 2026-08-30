@@ -90,6 +90,15 @@ class MongoDBConnector(BaseSourceConnector):
             "port": self._settings.port,
             "serverSelectionTimeoutMS": self._settings.connect_timeout_seconds * 1000,
             "connectTimeoutMS": self._settings.connect_timeout_seconds * 1000,
+            # MongoDB stores every date as UTC milliseconds, but pymongo decodes
+            # it to a NAIVE datetime unless asked otherwise. The pipeline's
+            # serializer refuses a naive datetime - correctly, because a
+            # timestamp with no zone is ambiguous - so without this option every
+            # document carrying a date fails source-native transformation.
+            #
+            # This is the driver reporting what MongoDB already guarantees, not
+            # an assumption: the stored value IS UTC.
+            "tz_aware": True,
         }
 
         if self._settings.username is not None:

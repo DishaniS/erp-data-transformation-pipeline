@@ -42,8 +42,8 @@ from dataclasses import dataclass
 from typing import Any
 
 #: This repository's environment variable for the Tesseract executable, with
-#: the older name kept as a fallback (see src/bpi2020/common/config.py, which
-#: established the same pair for the Phase 0 prototype).
+#: the older name kept as a deprecated fallback so existing .env files keep
+#: working.
 TESSERACT_ENV_VARS: tuple[str, ...] = ("TESSERACT_CMD", "TESSERACT_PATH")
 
 OCR_ENGINE_NAME = "tesseract"

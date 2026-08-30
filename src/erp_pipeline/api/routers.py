@@ -17,6 +17,7 @@ from erp_pipeline.api.config import API_VERSION
 from erp_pipeline.api.schemas import (
     ApiSpecUploadResponse,
     CapabilitiesResponse,
+    CapabilityStatus,
     ConnectionTestResponse,
     CsvUploadResponse,
     DependencyHealth,
@@ -50,7 +51,7 @@ from erp_pipeline.orchestration import (
     normalize_source_id,
 )
 from erp_pipeline.orchestration.models import ORCHESTRATION_ENGINE_VERSION
-from erp_pipeline.schemas.enums import SourceType
+from erp_pipeline.schemas.enums import ContentKind, SourceType
 
 
 def get_service(request: Request) -> OrchestrationService:
@@ -213,6 +214,88 @@ def _probe(name: str, configured: bool, target: Any) -> DependencyHealth:
 capabilities_router = APIRouter(prefix="/v1", tags=["capabilities"])
 
 
+def _integration_capabilities(services: Any) -> dict[str, CapabilityStatus]:
+    """What Members 2 and 3 can rely on, measured from the wiring (Phase 11).
+
+    Every ``enabled`` below is derived from a service actually being present,
+    never from a constant. A capability whose dependencies are missing reports
+    ``enabled=False`` with the reason, because an integration partner planning
+    against this document needs to know the difference between "this build
+    cannot" and "this deployment did not configure it".
+    """
+    search_ready = services.embedding is not None and services.storage is not None
+    ingest_ready = services.ingestion is not None
+
+    def status(enabled: bool, detail: str | None = None) -> CapabilityStatus:
+        return CapabilityStatus(supported=True, enabled=enabled, detail=detail)
+
+    missing_index = (
+        None
+        if search_ready
+        else "no embedding model or vector store is configured in this deployment"
+    )
+
+    return {
+        "csv_ingestion": status(
+            ingest_ready,
+            "infers and catalogs a schema; business rows are NOT indexed by "
+            "this call and still require a mapping or source-native job",
+        ),
+        "document_ingestion": status(
+            ingest_ready, "PDF and image upload with OCR fallback"
+        ),
+        "automatic_document_indexing": status(
+            ingest_ready and search_ready,
+            missing_index
+            or "an uploaded document submits its own document_pipeline job",
+        ),
+        "schema_discovery": status(
+            services.connection_factory is not None or services.catalog is not None,
+            "requires a registered source with a reachable connection",
+        ),
+        "schema_vector_retrieval": status(
+            search_ready, missing_index or "GET /v1/search?content_kind=schema"
+        ),
+        "structured_transformation": status(services.transformation is not None),
+        "semantic_search": status(
+            search_ready,
+            missing_index
+            or "returns identity and provenance; document text is resolved "
+            "separately through GET /v1/representations/{id}",
+        ),
+        "representation_resolution": status(
+            services.representations is not None,
+            None
+            if services.representations is not None
+            else "no representation store is configured; search hits cannot be "
+            "resolved back to their text",
+        ),
+        "response_adaptation": status(
+            True,
+            "POST /v1/responses/adapt needs no model, database or vector store. "
+            "A collection response adapts its FIRST record only and warns.",
+        ),
+        "remote_asset_fetching": status(
+            services.remote_asset_fetcher is not None
+            and services.remote_asset_policy is not None,
+            "ships disabled: no HTTP client is bundled, and a deployment must "
+            "supply both a policy and a fetcher. Static declared assets only - "
+            "never an ERP business API.",
+        ),
+        "scheduled_sync": status(
+            services.sync is not None,
+            "polling on a configured interval. Not CDC and not database "
+            "replication; freshness is bounded by the poll interval.",
+        ),
+        "sensitivity_metadata": status(
+            True,
+            "classification is DECLARED by the caller and reported on search "
+            "hits and resolved representations. This component makes no user "
+            "authorization decision.",
+        ),
+    }
+
+
 @capabilities_router.get(
     "/capabilities",
     response_model=CapabilitiesResponse,
@@ -245,10 +328,12 @@ def capabilities(
         file_types=["csv", "pdf", "png", "jpg", "jpeg", "tiff"],
         api_spec_formats=["openapi_3", "swagger_2", "postman_collection"],
         job_types=[job.value for job in JobType],
+        content_kinds=[kind.value for kind in ContentKind],
         storage_tiers=["hot", "warm", "cold"] if services.storage else [],
         embedding_model=getattr(services.embedding, "model_id", None),
         embedding_dimension=getattr(services.embedding, "dimension", None),
         incremental_sync_supported=services.sync is not None,
+        integration_capabilities=_integration_capabilities(services),
         limitations=limitations,
     )
 
@@ -384,6 +469,13 @@ def discover_source(
     """Delegates to Phase 4 or Phase 5. No discovery logic lives here."""
     source = service.sources.get(source_id)
     schema = service.services.discover_schema(source)
+    warnings: list[str] = []
+    # Structure discovered here becomes semantically searchable without a
+    # second call. Row data is untouched.
+    schema_job_id, schema_status, problem = service.index_schema(schema.schema_id)
+
+    if problem:
+        warnings.append(problem)
 
     return DiscoveryResponse(
         source_id=source_id,
@@ -394,6 +486,9 @@ def discover_source(
         field_count=sum(len(entity.fields) for entity in schema.entities),
         relationship_count=len(getattr(schema, "relationships", ()) or ()),
         published=service.services.catalog is not None,
+        schema_index_job_id=schema_job_id,
+        schema_indexing_status=schema_status,
+        warnings=warnings,
     )
 
 

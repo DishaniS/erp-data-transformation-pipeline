@@ -6,8 +6,9 @@ Table design decisions
 string the Phase 1 contract already produces (``source_system_id``,
 ``schema_id``, ``entity_id``, ``normalized_name``, ``relationship_id``,
 ``mapping_id``) or a small composite of them. A PostgreSQL ``SERIAL`` would
-reintroduce exactly the identity instability Phase 0 spent an entire phase
-eliminating - see ``src/bpi2020/common/stable_ids.py``.
+reintroduce exactly the identity instability this project spent an entire
+phase eliminating - see ``erp_pipeline.schemas.identity``, and in particular
+``require_business_key``.
 
 **Relational structure, not one JSON blob.** ``source_entities``,
 ``source_fields`` and ``source_relationships`` are proper tables, each row

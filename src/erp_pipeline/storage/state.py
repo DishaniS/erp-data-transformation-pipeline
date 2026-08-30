@@ -217,6 +217,29 @@ CREATE TABLE IF NOT EXISTS {_validate_schema(schema)}.{STATE_TABLE} (
     business_criticality  TEXT        NOT NULL,
     latency_requirement   TEXT        NOT NULL,
     entity_type           TEXT        NULL,
+    canonical_record_id   TEXT        NULL,
+    source_system_id      TEXT        NULL,
+    source_entity         TEXT        NULL,
+    record_key            TEXT        NULL,
+    document_id           TEXT        NULL,
+    content_kind          TEXT        NULL,
+    parent_record_id      TEXT        NULL,
+    source_field          TEXT        NULL,
+    business_key_name     TEXT        NULL,
+    business_key_value    TEXT        NULL,
+    filter_attributes     JSONB       NOT NULL DEFAULT '{{}}'::jsonb,
+    document_type         TEXT        NULL,
+    schema_name           TEXT        NULL,
+    entity_kind           TEXT        NULL,
+    schema_id             TEXT        NULL,
+    schema_version        TEXT        NULL,
+    entity_id             TEXT        NULL,
+    schema_chunk_index    INTEGER     NULL,
+    is_current            BOOLEAN     NOT NULL DEFAULT TRUE,
+    logical_key           TEXT        NULL,
+    page_start            INTEGER     NULL,
+    page_end              INTEGER     NULL,
+    chunk_index           INTEGER     NULL,
     access_count          BIGINT      NOT NULL DEFAULT 0,
     recent_access_count   BIGINT      NOT NULL DEFAULT 0,
     last_accessed_at      TIMESTAMPTZ NULL,
@@ -234,6 +257,93 @@ CREATE TABLE IF NOT EXISTS {_validate_schema(schema)}.{STATE_TABLE} (
 
 
 CREATE_STATE_SQL = create_state_sql()
+
+
+#: Columns added after the table's first release. Applied with
+#: ``ADD COLUMN IF NOT EXISTS`` so bootstrap stays idempotent and an existing
+#: research database gains them without being dropped or rebuilt. Every one is
+#: NULLABLE: a row written before the column existed genuinely has no value,
+#: and inventing one would be worse than reporting the absence.
+STATE_ADDED_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("canonical_record_id", "TEXT"),
+    ("source_system_id", "TEXT"),
+    ("source_entity", "TEXT"),
+    ("record_key", "TEXT"),
+    ("document_id", "TEXT"),
+    # -- Phase 4 --
+    ("content_kind", "TEXT"),
+    ("parent_record_id", "TEXT"),
+    ("source_field", "TEXT"),
+    ("business_key_name", "TEXT"),
+    ("business_key_value", "TEXT"),
+    ("filter_attributes", "JSONB NOT NULL DEFAULT '{}'::jsonb"),
+    ("document_type", "TEXT"),
+    # -- Phase 7 --
+    ("schema_name", "TEXT"),
+    ("entity_kind", "TEXT"),
+    ("schema_id", "TEXT"),
+    ("schema_version", "TEXT"),
+    ("entity_id", "TEXT"),
+    ("schema_chunk_index", "INTEGER"),
+    # -- Phase 9 --
+    ("is_current", "BOOLEAN NOT NULL DEFAULT TRUE"),
+    ("logical_key", "TEXT"),
+    ("page_start", "INTEGER"),
+    ("page_end", "INTEGER"),
+    ("chunk_index", "INTEGER"),
+)
+
+
+def alter_state_sql(schema: str = STORAGE_SCHEMA_NAME) -> tuple[str, ...]:
+    """Idempotent ``ALTER TABLE`` statements for the added columns."""
+    table = f"{_validate_schema(schema)}.{STATE_TABLE}"
+
+    return tuple(
+        f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {sql_type}"
+        for name, sql_type in STATE_ADDED_COLUMNS
+    )
+
+
+def create_state_filter_index_sql(schema: str = STORAGE_SCHEMA_NAME) -> str:
+    """Index the columns retrieval filters use, so a filtered scan is cheap."""
+    validated = _validate_schema(schema)
+
+    return (
+        f"CREATE INDEX IF NOT EXISTS {STATE_TABLE}_filter_idx "
+        f"ON {validated}.{STATE_TABLE} "
+        "(entity_type, source_system_id, sensitivity)"
+    )
+
+
+def create_state_identity_index_sql(schema: str = STORAGE_SCHEMA_NAME) -> str:
+    """Index the Phase 4 identity filters.
+
+    A separate index rather than more columns on the existing one: these are
+    the ERP-identity questions ("everything belonging to EMP002"), they are far
+    more selective than entity type or sensitivity, and they are asked
+    together. Leading with ``business_key_value`` means the common single-key
+    lookup uses the index prefix.
+    """
+    validated = _validate_schema(schema)
+
+    return (
+        f"CREATE INDEX IF NOT EXISTS {STATE_TABLE}_identity_idx "
+        f"ON {validated}.{STATE_TABLE} "
+        "(business_key_value, content_kind, document_type)"
+    )
+
+
+def create_state_record_identity_index_sql(
+    schema: str = STORAGE_SCHEMA_NAME,
+) -> str:
+    """Index the canonical source identity used by exact GET searches."""
+    validated = _validate_schema(schema)
+
+    return (
+        f"CREATE INDEX IF NOT EXISTS {STATE_TABLE}_record_identity_idx "
+        f"ON {validated}.{STATE_TABLE} "
+        "(source_system_id, source_entity, record_key, content_kind)"
+    )
 
 def create_transitions_sql(schema: str = STORAGE_SCHEMA_NAME) -> str:
     return f"""
@@ -297,6 +407,14 @@ def bootstrap_storage_schema(
     with engine.begin() as connection:
         connection.execute(text(create_schema_sql(schema)))
         connection.execute(text(create_state_sql(schema)))
+
+        # Additive, and safe on a table that already has them.
+        for statement in alter_state_sql(schema):
+            connection.execute(text(statement))
+
+        connection.execute(text(create_state_filter_index_sql(schema)))
+        connection.execute(text(create_state_identity_index_sql(schema)))
+        connection.execute(text(create_state_record_identity_index_sql(schema)))
         connection.execute(text(create_transitions_sql(schema)))
         connection.execute(text(create_transitions_index_sql(schema)))
         connection.execute(text(create_access_sql(schema)))
@@ -373,6 +491,29 @@ class PostgresTierStateStore:
             "business_criticality": metadata.business_criticality.value,
             "latency_requirement": metadata.latency_requirement.value,
             "entity_type": metadata.entity_type,
+            "canonical_record_id": metadata.canonical_record_id,
+            "source_system_id": metadata.source_system_id,
+            "source_entity": metadata.source_entity,
+            "record_key": metadata.record_key,
+            "document_id": metadata.document_id,
+            "content_kind": metadata.content_kind,
+            "parent_record_id": metadata.parent_record_id,
+            "source_field": metadata.source_field,
+            "business_key_name": metadata.business_key_name,
+            "business_key_value": metadata.business_key_value,
+            "filter_attributes": json.dumps(dict(metadata.filter_attributes)),
+            "document_type": metadata.document_type,
+            "schema_name": metadata.schema_name,
+            "entity_kind": metadata.entity_kind,
+            "schema_id": metadata.schema_id,
+            "schema_version": metadata.schema_version,
+            "entity_id": metadata.entity_id,
+            "schema_chunk_index": metadata.schema_chunk_index,
+            "is_current": metadata.is_current,
+            "logical_key": metadata.logical_key,
+            "page_start": metadata.page_start,
+            "page_end": metadata.page_end,
+            "chunk_index": metadata.chunk_index,
             "access_count": metadata.access_count,
             "recent_access_count": metadata.recent_access_count,
             "last_accessed_at": metadata.last_accessed_at,
@@ -416,7 +557,16 @@ class PostgresTierStateStore:
                         representation_id, embedding_id, vector_id,
                         current_tier, content_hash, model_id, dimension,
                         sensitivity, business_criticality, latency_requirement,
-                        entity_type, access_count, recent_access_count,
+                        entity_type, canonical_record_id, source_system_id,
+                        source_entity, record_key, document_id,
+                        content_kind, parent_record_id, source_field,
+                        business_key_name, business_key_value, filter_attributes,
+                        document_type,
+                        schema_name, entity_kind, schema_id,
+                        schema_version, entity_id, schema_chunk_index,
+                        is_current, logical_key,
+                        page_start, page_end, chunk_index,
+                        access_count, recent_access_count,
                         last_accessed_at, created_at, content_updated_at,
                         retention_until, legal_hold, tier_since,
                         policy_id, policy_version, state_version, updated_at
@@ -424,7 +574,17 @@ class PostgresTierStateStore:
                         :rid, :embedding_id, :vector_id,
                         :current_tier, :content_hash, :model_id, :dimension,
                         :sensitivity, :business_criticality, :latency_requirement,
-                        :entity_type, :access_count, :recent_access_count,
+                        :entity_type, :canonical_record_id, :source_system_id,
+                        :source_entity, :record_key, :document_id,
+                        :content_kind, :parent_record_id, :source_field,
+                        :business_key_name, :business_key_value,
+                        CAST(:filter_attributes AS JSONB),
+                        :document_type,
+                        :schema_name, :entity_kind, :schema_id,
+                        :schema_version, :entity_id, :schema_chunk_index,
+                        :is_current, :logical_key,
+                        :page_start, :page_end, :chunk_index,
+                        :access_count, :recent_access_count,
                         :last_accessed_at, :created_at, :content_updated_at,
                         :retention_until, :legal_hold, :tier_since,
                         :policy_id, :policy_version, :state_version, :updated_at
@@ -440,6 +600,81 @@ class PostgresTierStateStore:
                         business_criticality = EXCLUDED.business_criticality,
                         latency_requirement = EXCLUDED.latency_requirement,
                         entity_type = EXCLUDED.entity_type,
+                        -- COALESCE, not overwrite: a re-store that happens to
+                        -- carry no canonical reference must not erase one an
+                        -- earlier write already established.
+                        canonical_record_id = COALESCE(
+                            EXCLUDED.canonical_record_id,
+                            {STATE_TABLE}.canonical_record_id
+                        ),
+                        source_system_id = COALESCE(
+                            EXCLUDED.source_system_id,
+                            {STATE_TABLE}.source_system_id
+                        ),
+                        source_entity = COALESCE(
+                            EXCLUDED.source_entity, {STATE_TABLE}.source_entity
+                        ),
+                        record_key = COALESCE(
+                            EXCLUDED.record_key, {STATE_TABLE}.record_key
+                        ),
+                        document_id = COALESCE(
+                            EXCLUDED.document_id, {STATE_TABLE}.document_id
+                        ),
+                        content_kind = COALESCE(
+                            EXCLUDED.content_kind, {STATE_TABLE}.content_kind
+                        ),
+                        parent_record_id = COALESCE(
+                            EXCLUDED.parent_record_id, {STATE_TABLE}.parent_record_id
+                        ),
+                        source_field = COALESCE(
+                            EXCLUDED.source_field, {STATE_TABLE}.source_field
+                        ),
+                        business_key_name = COALESCE(
+                            EXCLUDED.business_key_name, {STATE_TABLE}.business_key_name
+                        ),
+                        business_key_value = COALESCE(
+                            EXCLUDED.business_key_value, {STATE_TABLE}.business_key_value
+                        ),
+                        filter_attributes = COALESCE(
+                            EXCLUDED.filter_attributes, {STATE_TABLE}.filter_attributes
+                        ),
+                        document_type = COALESCE(
+                            EXCLUDED.document_type, {STATE_TABLE}.document_type
+                        ),
+                        schema_name = COALESCE(
+                            EXCLUDED.schema_name, {STATE_TABLE}.schema_name
+                        ),
+                        entity_kind = COALESCE(
+                            EXCLUDED.entity_kind, {STATE_TABLE}.entity_kind
+                        ),
+                        schema_id = COALESCE(
+                            EXCLUDED.schema_id, {STATE_TABLE}.schema_id
+                        ),
+                        schema_version = COALESCE(
+                            EXCLUDED.schema_version, {STATE_TABLE}.schema_version
+                        ),
+                        entity_id = COALESCE(
+                            EXCLUDED.entity_id, {STATE_TABLE}.entity_id
+                        ),
+                        schema_chunk_index = COALESCE(
+                            EXCLUDED.schema_chunk_index, {STATE_TABLE}.schema_chunk_index
+                        ),
+                        -- NOT coalesced: a re-store means this vector is being
+                        -- written as current again, and preserving a stale
+                        -- False would make a live vector invisible.
+                        is_current = EXCLUDED.is_current,
+                        logical_key = COALESCE(
+                            EXCLUDED.logical_key, {STATE_TABLE}.logical_key
+                        ),
+                        page_start = COALESCE(
+                            EXCLUDED.page_start, {STATE_TABLE}.page_start
+                        ),
+                        page_end = COALESCE(
+                            EXCLUDED.page_end, {STATE_TABLE}.page_end
+                        ),
+                        chunk_index = COALESCE(
+                            EXCLUDED.chunk_index, {STATE_TABLE}.chunk_index
+                        ),
                         access_count = EXCLUDED.access_count,
                         recent_access_count = EXCLUDED.recent_access_count,
                         last_accessed_at = EXCLUDED.last_accessed_at,
@@ -575,6 +810,28 @@ class PostgresTierStateStore:
         return tuple(_row_to_transition(row) for row in rows)
 
 
+def _optional_column(row: Mapping[str, Any], name: str) -> Any:
+    """Read a column that may be absent as well as NULL.
+
+    A row selected from a database that has not had ``bootstrap`` run since
+    these columns were added will not contain the key at all, and a hard
+    ``row[name]`` would turn a benign schema lag into a crash on every read.
+    Absent and NULL both mean "this record has no such value", which is the
+    honest answer either way.
+    """
+    try:
+        return row[name]
+    except (KeyError, IndexError):
+        return None
+
+
+def _optional_int(row: Mapping[str, Any], name: str) -> int | None:
+    """An optional integer column, absent-tolerant like ``_optional_column``."""
+    value = _optional_column(row, name)
+
+    return None if value is None else int(value)
+
+
 def _row_to_metadata(row: Mapping[str, Any]) -> StorageRecordMetadata:
     return StorageRecordMetadata(
         representation_id=row["representation_id"],
@@ -588,6 +845,36 @@ def _row_to_metadata(row: Mapping[str, Any]) -> StorageRecordMetadata:
         business_criticality=BusinessCriticality(row["business_criticality"]),
         latency_requirement=LatencyRequirement(row["latency_requirement"]),
         entity_type=row["entity_type"],
+        canonical_record_id=_optional_column(row, "canonical_record_id"),
+        source_system_id=_optional_column(row, "source_system_id"),
+        source_entity=_optional_column(row, "source_entity"),
+        record_key=_optional_column(row, "record_key"),
+        document_id=_optional_column(row, "document_id"),
+        content_kind=_optional_column(row, "content_kind"),
+        parent_record_id=_optional_column(row, "parent_record_id"),
+        source_field=_optional_column(row, "source_field"),
+        business_key_name=_optional_column(row, "business_key_name"),
+        business_key_value=_optional_column(row, "business_key_value"),
+        filter_attributes=dict(
+            _optional_column(row, "filter_attributes") or {}
+        ),
+        document_type=_optional_column(row, "document_type"),
+        schema_name=_optional_column(row, "schema_name"),
+        entity_kind=_optional_column(row, "entity_kind"),
+        schema_id=_optional_column(row, "schema_id"),
+        schema_version=_optional_column(row, "schema_version"),
+        entity_id=_optional_column(row, "entity_id"),
+        schema_chunk_index=_optional_int(row, "schema_chunk_index"),
+        # Absent column (a database not yet re-bootstrapped) reads as current,
+        # which is what every pre-Phase-9 vector genuinely is.
+        is_current=bool(
+            True if _optional_column(row, "is_current") is None
+            else _optional_column(row, "is_current")
+        ),
+        logical_key=_optional_column(row, "logical_key"),
+        page_start=_optional_int(row, "page_start"),
+        page_end=_optional_int(row, "page_end"),
+        chunk_index=_optional_int(row, "chunk_index"),
         access_count=int(row["access_count"]),
         recent_access_count=int(row["recent_access_count"]),
         last_accessed_at=row["last_accessed_at"],
@@ -631,4 +918,5 @@ __all__ = [
     "InMemoryTierStateStore",
     "PostgresTierStateStore",
     "bootstrap_storage_schema",
+    "create_state_record_identity_index_sql",
 ]

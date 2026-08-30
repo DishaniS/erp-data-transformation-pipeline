@@ -1,0 +1,102 @@
+{
+  "verification": "mongodb_end_to_end",
+  "generated_at": "2026-08-30T05:54:54.766427+00:00",
+  "environment": {
+    "mongodb": "localhost:27018",
+    "database": "erp_viva_mongodb_demo",
+    "qdrant_collections": [
+      "erp_vectors_hot",
+      "erp_vectors_warm"
+    ],
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "sensitivity": "internal",
+    "source_system_id": "viva_mongo"
+  },
+  "checks": [
+    {
+      "check": "Mongo source registration + connection test",
+      "pass": true,
+      "detail": "server 8.2.4"
+    },
+    {
+      "check": "Mongo discovery",
+      "pass": true,
+      "detail": "2 entities: ['employees', 'invoices']"
+    },
+    {
+      "check": "schema origin is INFERRED (observed, not declared)",
+      "pass": true,
+      "detail": "origin=inferred"
+    },
+    {
+      "check": "SourceSchema persisted to the runtime catalog",
+      "pass": true,
+      "detail": "schema_id=viva_mongo.erp_viva_mongodb_demo.erp_viva_mongodb_de"
+    },
+    {
+      "check": "source-native job accepted",
+      "pass": true,
+      "detail": "status=pending"
+    },
+    {
+      "check": "source-native job completed",
+      "pass": true,
+      "detail": "status=succeeded"
+    },
+    {
+      "check": "vectors stored in Qdrant",
+      "pass": true,
+      "detail": "11 stored, 0 failed"
+    },
+    {
+      "check": "POST /v1/search returned MongoDB content",
+      "pass": true,
+      "detail": "9 hits, model=sentence-transformers/all-MiniLM-L6-v2, dim=384"
+    },
+    {
+      "check": "GET /v1/representations/{id} resolved",
+      "pass": true,
+      "detail": "321 chars, sensitivity=internal"
+    },
+    {
+      "check": "EMP002 found by BUSINESS key, not ObjectId",
+      "pass": true,
+      "detail": "1 hits under business_key_value=EMP002"
+    },
+    {
+      "check": "business identity is employee_id",
+      "pass": true,
+      "detail": "employee_id=EMP002"
+    },
+    {
+      "check": "EMP002 representation resolves to its AI-ready text",
+      "pass": true,
+      "detail": "358 chars"
+    },
+    {
+      "check": "ObjectId did not become the business key",
+      "pass": true,
+      "detail": "record_key carries _id; business_key_value carries employee_id"
+    },
+    {
+      "check": "no binary or base64 in any representation",
+      "pass": true,
+      "detail": "11 representations scanned"
+    }
+  ],
+  "counts": {
+    "records_read": 9,
+    "records_transformed": 9,
+    "representations_built": 11,
+    "embeddings_generated": 11,
+    "vectors_stored": 11,
+    "vectors_failed": 0,
+    "tier_route stage": "succeeded",
+    "tiers_searched": [
+      "hot",
+      "warm"
+    ]
+  },
+  "checks_passed": 14,
+  "checks_total": 14
+}

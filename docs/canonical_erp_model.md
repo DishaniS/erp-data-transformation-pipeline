@@ -1,5 +1,12 @@
 # Canonical ERP Data Model
 
+
+> **Consolidation note (2026-08-21).** This document is a development record
+> for its phase. It refers to `src/bpi2020/` and/or `src/erp_integrations/`,
+> which no longer exist: both were consolidated into `src/erp_pipeline/`. The
+> behaviour described is preserved, but the module paths below are historical.
+> See `docs/architecture/ARCHITECTURE_CONSOLIDATION_REPORT.md`.
+
 Project `R26-SE-034` — ERP-Aware Data Transformation Pipeline
 Component owner: IT22267290
 

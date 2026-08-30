@@ -336,6 +336,16 @@ class FileSource:
     media_type: str
     size_bytes: int
     local_path: Path | None = None
+    #: Content held in memory instead of on disk, for bytes that never were a
+    #: file - a database BLOB, most of all. Runtime-only and excluded from
+    #: ``to_dict()`` for the same reason ``local_path`` is: it is not identity.
+    #:
+    #: This exists so an ERP document extracted from a BLOB never has to be
+    #: spilled to a temporary file. A birth certificate written to the system
+    #: temp directory would sit there in plaintext, outside every access
+    #: control and encryption guarantee the storage tiers provide, for the sake
+    #: of handing a parser a path it did not need.
+    payload: bytes | None = None
 
     @property
     def source_type(self) -> SourceType:

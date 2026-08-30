@@ -3,10 +3,10 @@
 WHY THESE ARE INTERFACES
 ------------------------
 The generic sync engine must not know that this project happens to use
-PostgreSQL for canonical storage and Qdrant for vectors. It must not import
-``bpi2020`` either (Step 76). So every downstream stage is a narrow protocol
-with an in-memory implementation for tests, and real systems arrive through
-adapters that live outside this package.
+PostgreSQL for canonical storage and Qdrant for vectors, and it must not know
+anything about a particular dataset. So every downstream stage is a narrow
+protocol with an in-memory implementation for tests, and real systems arrive
+through adapters that implement those protocols.
 
 That is also what keeps Phase 10 inside its boundary: it proves incremental
 propagation reaches the vector layer WITHOUT designing the Phase 11/12

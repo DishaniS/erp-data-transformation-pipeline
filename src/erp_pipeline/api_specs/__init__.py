@@ -42,7 +42,7 @@ Privacy: declared NAMES are structure and are kept; VALUES are not. Example
 payloads, Postman header values, variable values and auth credentials never
 reach a schema, a warning, an exception, a log or the catalog.
 
-This package never imports ``bpi2020``.
+This package never imports a dataset-specific module.
 """
 
 from __future__ import annotations

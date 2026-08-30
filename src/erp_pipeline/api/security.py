@@ -35,6 +35,11 @@ PUBLIC_PATHS = (
     "/openapi.json",
 )
 
+#: Search used to be POST and was therefore protected whenever API-key auth
+#: was enabled. Keep that security boundary when the read-only GET route is
+#: used, even in deployments that otherwise permit unauthenticated browsing.
+SENSITIVE_READ_PATHS = ("/v1/search",)
+
 
 def keys_match(supplied: str | None, configured: str | None) -> bool:
     """Constant-time comparison.
@@ -57,6 +62,9 @@ def requires_key(method: str, path: str, protect_reads: bool) -> bool:
     if method.upper() in MUTATING_METHODS:
         return True
 
+    if path in SENSITIVE_READ_PATHS:
+        return True
+
     return protect_reads
 
 
@@ -69,6 +77,7 @@ __all__ = [
     "API_KEY_HEADER",
     "MUTATING_METHODS",
     "PUBLIC_PATHS",
+    "SENSITIVE_READ_PATHS",
     "keys_match",
     "requires_key",
     "redact",

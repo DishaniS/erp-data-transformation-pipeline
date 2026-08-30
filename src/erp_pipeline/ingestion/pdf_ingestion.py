@@ -68,10 +68,9 @@ class PdfFileIngestion:
 
     def ingest(self) -> ExtractedDocument:
         fitz = _import_pymupdf()
-        path = self._require_local_path()
         options = self._options
 
-        document = self._open(fitz, path)
+        document = self._open(fitz)
 
         try:
             if document.needs_pass:
@@ -340,9 +339,18 @@ class PdfFileIngestion:
             self._ocr = probe_ocr(self._tesseract_cmd)
         return self._ocr
 
-    def _open(self, fitz: Any, path: Path) -> Any:
+    def _open(self, fitz: Any) -> Any:
+        """Open from memory when the content never was a file, else from disk.
+
+        ``fitz`` reads a byte stream natively, so a BLOB needs no temporary
+        file. Both branches raise the same error, so a corrupt PDF is reported
+        identically whichever way it arrived.
+        """
         try:
-            return fitz.open(path)
+            if self._file.payload is not None:
+                return fitz.open(stream=self._file.payload, filetype="pdf")
+
+            return fitz.open(self._require_local_path())
         except Exception as exc:
             raise MalformedPDFError(
                 f"{self._file.original_filename!r} could not be opened as a "

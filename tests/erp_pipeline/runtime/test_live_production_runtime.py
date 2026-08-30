@@ -285,14 +285,27 @@ def test_a_mapping_draft_survives_a_restart(build_app):
     """An ambiguous mapping awaiting human review must not vanish."""
     from fastapi.testclient import TestClient
 
-    # 'invoices.csv' produces genuine ambiguity where 'invoice.csv' does not.
+    # Ambiguity has to come from the DATA, not from a filename artefact.
+    #
+    # This test previously relied on "invoices.csv" being read as an entity
+    # literally called "invoices.csv", which failed to match the canonical
+    # "invoice" and so made customer_id/amount/status ambiguous. That was a
+    # defect (Phase 1 FIX 7), and fixing it removed the ambiguity this test
+    # needs - the mapping auto-approved and the test silently skipped itself.
+    #
+    # "ledger.csv" reproduces the condition honestly: a legacy export whose
+    # table name matches no canonical entity, carrying fields that genuinely
+    # belong to more than one of them. customer_id could be invoice.customer_id
+    # or customer.customer_id; amount could be invoice.amount or
+    # purchase_order.amount. Nothing disambiguates them, so the engine refuses
+    # to choose and files a draft - which is exactly the path under test.
     ambiguous_csv = CSV_BYTES
 
     app = build_app()
     with TestClient(app) as client:
         uploaded = client.post(
             "/v1/files/csv",
-            files={"file": ("invoices.csv", ambiguous_csv, "text/csv")},
+            files={"file": ("ledger.csv", ambiguous_csv, "text/csv")},
         ).json()
         suggested = client.post(
             "/v1/mappings/suggest", json={"schema_id": uploaded["schema_id"]}

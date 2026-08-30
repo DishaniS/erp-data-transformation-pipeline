@@ -1,0 +1,314 @@
+{
+  "generated_at": "2026-08-25T10:23:52.280662+00:00",
+  "environment": {
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "dimension": 384,
+    "vector_store": "in-process tier (NOT a real Qdrant server)"
+  },
+  "corpus": {
+    "source_systems": 4,
+    "entities": 24,
+    "fields": 95,
+    "representations": 24
+  },
+  "retrieval": {
+    "queries": 22,
+    "recall_at_1": 0.7273,
+    "recall_at_3": 0.9091,
+    "mrr": 0.8106,
+    "results": [
+      {
+        "category": "field",
+        "query": "Which ERP table contains employee birth certificates?",
+        "expected": "legacy_hr.employees",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "legacy_hr.employees",
+          "legacy_hr.birth_records",
+          "legacy_hr.departments"
+        ]
+      },
+      {
+        "category": "field",
+        "query": "Where is the invoice total amount stored?",
+        "expected": "finance_erp.invoices",
+        "filters": {},
+        "rank": 2,
+        "top_3": [
+          "finance_erp.invoice_lines",
+          "finance_erp.invoices",
+          "finance_erp.payments"
+        ]
+      },
+      {
+        "category": "field",
+        "query": "Which table holds the customer credit limit?",
+        "expected": "finance_erp.customers",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "finance_erp.customers",
+          "finance_erp.payments",
+          "finance_erp.purchase_orders"
+        ]
+      },
+      {
+        "category": "field",
+        "query": "Where are bank account details for payroll kept?",
+        "expected": "legacy_payroll.employees",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "legacy_payroll.employees",
+          "legacy_payroll.deductions",
+          "legacy_payroll.payslips"
+        ]
+      },
+      {
+        "category": "field",
+        "query": "Which collection stores machine inspection report files?",
+        "expected": "plant_ops.inspection_reports",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "plant_ops.inspection_reports",
+          "plant_ops.sensor_readings",
+          "plant_ops.maintenance_logs"
+        ]
+      },
+      {
+        "category": "field",
+        "query": "Where is the spare part unit cost recorded?",
+        "expected": "plant_ops.spare_parts",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "plant_ops.spare_parts",
+          "finance_erp.purchase_orders",
+          "finance_erp.invoice_lines"
+        ]
+      },
+      {
+        "category": "entity",
+        "query": "table of departments and cost centres",
+        "expected": "legacy_hr.departments",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "legacy_hr.departments",
+          "plant_ops.spare_parts",
+          "legacy_payroll.pay_grades"
+        ]
+      },
+      {
+        "category": "entity",
+        "query": "employee leave and absence approvals",
+        "expected": "legacy_hr.leave_requests",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "legacy_hr.leave_requests",
+          "legacy_hr.employees",
+          "legacy_hr.employee_training"
+        ]
+      },
+      {
+        "category": "entity",
+        "query": "supplier tax identification records",
+        "expected": "finance_erp.suppliers",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "finance_erp.suppliers",
+          "finance_erp.purchase_orders",
+          "finance_erp.tax_rates"
+        ]
+      },
+      {
+        "category": "entity",
+        "query": "machine maintenance history",
+        "expected": "plant_ops.maintenance_logs",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "plant_ops.maintenance_logs",
+          "plant_ops.machines",
+          "plant_ops.inspection_reports"
+        ]
+      },
+      {
+        "category": "entity",
+        "query": "payslip documents for each pay period",
+        "expected": "legacy_payroll.payslips",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "legacy_payroll.payslips",
+          "legacy_payroll.pay_grades",
+          "finance_erp.payments"
+        ]
+      },
+      {
+        "category": "entity",
+        "query": "warehouse stock quantities per product",
+        "expected": "plant_ops.warehouse_stock",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "plant_ops.warehouse_stock",
+          "finance_erp.purchase_orders",
+          "finance_erp.suppliers"
+        ]
+      },
+      {
+        "category": "datatype",
+        "query": "Which employee field stores binary document data?",
+        "expected": "legacy_hr.employees",
+        "filters": {},
+        "rank": null,
+        "top_3": [
+          "legacy_payroll.payslips",
+          "legacy_payroll.employees",
+          "legacy_hr.employee_notes"
+        ]
+      },
+      {
+        "category": "datatype",
+        "query": "table with a VARBINARY column for scanned manuals",
+        "expected": "plant_ops.machines",
+        "filters": {},
+        "rank": null,
+        "top_3": [
+          "legacy_payroll.payslips",
+          "plant_ops.inspection_reports",
+          "plant_ops.spare_parts"
+        ]
+      },
+      {
+        "category": "datatype",
+        "query": "decimal columns holding monetary amounts on invoices",
+        "expected": "finance_erp.invoices",
+        "filters": {},
+        "rank": 3,
+        "top_3": [
+          "legacy_payroll.pay_grades",
+          "finance_erp.payments",
+          "finance_erp.invoices"
+        ]
+      },
+      {
+        "category": "datatype",
+        "query": "array field on a mongo collection",
+        "expected": "plant_ops.sensor_readings",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "plant_ops.sensor_readings",
+          "legacy_hr.document_archive",
+          "finance_erp.payments"
+        ]
+      },
+      {
+        "category": "relationship",
+        "query": "How are purchase orders related to suppliers?",
+        "expected": "finance_erp.purchase_orders",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "finance_erp.purchase_orders",
+          "finance_erp.suppliers",
+          "finance_erp.invoice_lines"
+        ]
+      },
+      {
+        "category": "relationship",
+        "query": "foreign key from employees to departments",
+        "expected": "legacy_hr.employees",
+        "filters": {},
+        "rank": 2,
+        "top_3": [
+          "legacy_hr.departments",
+          "legacy_hr.employees",
+          "plant_ops.maintenance_logs"
+        ]
+      },
+      {
+        "category": "relationship",
+        "query": "which table links invoice lines back to invoices",
+        "expected": "finance_erp.invoice_lines",
+        "filters": {},
+        "rank": 1,
+        "top_3": [
+          "finance_erp.invoice_lines",
+          "finance_erp.invoices",
+          "legacy_payroll.payslips"
+        ]
+      },
+      {
+        "category": "cross_source",
+        "query": "employees table",
+        "expected": "legacy_hr.employees",
+        "filters": {
+          "source_system_id": "legacy_hr"
+        },
+        "rank": 1,
+        "top_3": [
+          "legacy_hr.employees",
+          "legacy_hr.departments",
+          "legacy_hr.employee_training"
+        ]
+      },
+      {
+        "category": "cross_source",
+        "query": "employees table",
+        "expected": "legacy_payroll.employees",
+        "filters": {
+          "source_system_id": "legacy_payroll"
+        },
+        "rank": 1,
+        "top_3": [
+          "legacy_payroll.employees",
+          "legacy_payroll.pay_grades",
+          "legacy_payroll.payslips"
+        ]
+      },
+      {
+        "category": "cross_source",
+        "query": "invoice records",
+        "expected": "finance_erp.invoices",
+        "filters": {
+          "schema_name": "sales"
+        },
+        "rank": 2,
+        "top_3": [
+          "finance_erp.invoice_lines",
+          "finance_erp.invoices",
+          "finance_erp.payments"
+        ]
+      }
+    ]
+  },
+  "gates": {
+    "business_value_leakage": 0,
+    "leaked_values": [],
+    "unresolvable_schema_hits": 0,
+    "duplicate_current_representations": 0,
+    "wrong_source_under_exact_filter": 0,
+    "schema_text_in_qdrant": false,
+    "representations_before_reindex": 24,
+    "representations_after_reindex": 24,
+    "undefined_content_kind_status": 422,
+    "other_content_kind_hits": {
+      "structured_record": 0,
+      "document_chunk": 0
+    }
+  },
+  "latency_ms": {
+    "schema_index_per_source_median": 238.56,
+    "schema_query_median": 22.463,
+    "schema_query_p95": 29.945,
+    "representation_resolve_median": 3.317
+  },
+  "passed": true
+}

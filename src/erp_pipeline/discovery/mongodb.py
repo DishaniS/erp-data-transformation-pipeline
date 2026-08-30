@@ -48,7 +48,8 @@ create, index or aggregation call;
 ``tests/erp_pipeline/discovery/test_mongodb_read_only_safety.py`` proves it by
 walking this module's AST.
 
-This module never imports ``bpi2020``, ``pymongo`` or ``bson``.
+This module never imports ``pymongo`` or ``bson`` at module scope, nor any
+dataset-specific module.
 """
 
 from __future__ import annotations

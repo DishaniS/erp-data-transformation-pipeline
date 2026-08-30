@@ -45,7 +45,27 @@ _SEPARATORS = re.compile(r"[\s_\-./\\:]+")
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 #: Digits glued to a word (``line1`` -> ``line`` + ``1``).
-_DIGIT_BOUNDARY = re.compile(r"(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])")
+#:
+#: The letter->digit half requires TWO letters before the split, which keeps a
+#: short alphanumeric IDENTIFIER atomic:
+#:
+#:     line1   -> ("line", "1")     two letters precede the digit: split
+#:     e002    -> ("e002",)         one letter precedes it: an identifier
+#:
+#: Why that distinction is load-bearing: ``E002`` used to split into ``e`` +
+#: ``002``, and the synonym table maps the single letter ``e`` onto ``email``
+#: (it exists so ``e_mail`` -> ``e`` + ``mail`` folds correctly). An employee
+#: code therefore acquired an ``email`` token it never contained, and any field
+#: called ``email`` scored a false match against a query naming that employee.
+#:
+#: Splitting is refused rather than the synonym being removed, because ``e`` ->
+#: ``email`` is correct for ``e_mail`` and several real ERP spellings depend on
+#: it. A one-letter run glued to digits is not a word in the first place, so the
+#: honest fix is not to manufacture one.
+#:
+#: Longer prefixes are untouched, so ``inv204`` -> ``inv`` + ``204`` -> and then
+#: ``invoice`` + ``204`` still works: ``inv`` IS a word ERP systems abbreviate.
+_DIGIT_BOUNDARY = re.compile(r"(?<=[a-z]{2})(?=\d)|(?<=\d)(?=[a-z])")
 
 #: Tokens that carry no distinguishing meaning in an ERP field or table name.
 #: Dropped only when a name has other tokens left, so a field literally called

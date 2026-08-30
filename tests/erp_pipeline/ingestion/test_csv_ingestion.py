@@ -486,13 +486,26 @@ def test_the_schema_is_marked_inferred_not_discovered(csv_fixtures):
 
 
 def test_one_csv_becomes_one_dataset_entity(csv_fixtures):
-    schema = ingest(csv_fixtures / "normal.csv").schema
+    """The entity is named for the DATASET, not for the file that carried it.
+
+    ``source_name`` previously kept the ".csv" suffix, which Phase 8's entity
+    evidence then matched against the canonical model - so "invoices.csv" failed
+    to match "invoice" cleanly and pushed mappable fields into AMBIGUOUS. The
+    suffix is provenance, not semantics, and is asserted below to still be
+    preserved on the provenance record.
+    """
+    result = ingest(csv_fixtures / "normal.csv")
+    schema = result.schema
 
     assert len(schema.entities) == 1
     entity = schema.entities[0]
     assert entity.entity_kind is EntityKind.DATASET
     assert entity.normalized_name == "normal"
-    assert entity.source_name == "normal.csv"
+    assert entity.source_name == "normal"
+
+    # The filename itself is not lost - it remains the file's provenance.
+    assert result.provenance.original_filename == "normal.csv"
+    assert entity.metadata["source_filename"] == "normal.csv"
 
 
 def test_no_primary_key_is_invented(csv_fixtures):

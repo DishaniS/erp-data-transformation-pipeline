@@ -41,7 +41,7 @@ MongoDB inference calls only ``list_collections``, ``find`` and
 ``estimated_document_count``. Nothing in this package emits DDL, DML or a
 document write.
 
-This package never imports ``bpi2020``.
+This package never imports a dataset-specific module.
 """
 
 from __future__ import annotations

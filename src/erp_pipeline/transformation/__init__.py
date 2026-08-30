@@ -41,7 +41,7 @@ BOUNDARIES
 ----------
 This package writes nothing anywhere: no database, no file, no vector store, no
 network, no LLM, no embeddings. It transforms in memory and hands the results
-back. It never imports ``bpi2020``. Static tests assert all of it.
+back. It never imports a dataset-specific module. Static tests assert all of it.
 """
 
 from __future__ import annotations

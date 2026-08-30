@@ -80,6 +80,117 @@
         "title": "ApiSpecUploadResponse",
         "type": "object"
       },
+      "AvailableSearchEntityResponse": {
+        "description": "One discovered ``(source_system_id, source_entity)`` and its fields.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "entity_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Kind"
+          },
+          "fields": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AvailableSearchFieldResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "searchable": {
+            "default": true,
+            "title": "Searchable",
+            "type": "boolean"
+          },
+          "source_entity": {
+            "title": "Source Entity",
+            "type": "string"
+          },
+          "source_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source System Id"
+          }
+        },
+        "required": [
+          "source_entity"
+        ],
+        "title": "AvailableSearchEntityResponse",
+        "type": "object"
+      },
+      "AvailableSearchFieldResponse": {
+        "description": "One field of one discovered entity, as ``GET /v1/search`` reports it\nwhen called with no query.",
+        "properties": {
+          "business_key": {
+            "default": false,
+            "title": "Business Key",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "example_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example Value"
+          },
+          "filterable": {
+            "default": true,
+            "title": "Filterable",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "AvailableSearchFieldResponse",
+        "type": "object"
+      },
       "Body_uploadCsv": {
         "properties": {
           "file": {
@@ -96,10 +207,87 @@
       },
       "Body_uploadDocument": {
         "properties": {
+          "business_key_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Key Name"
+          },
+          "business_key_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Key Value"
+          },
+          "document_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type"
+          },
           "file": {
             "contentMediaType": "application/octet-stream",
             "title": "File",
             "type": "string"
+          },
+          "parent_record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Record Id"
+          },
+          "sensitivity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity"
+          },
+          "source_entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity"
+          },
+          "source_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source System Id"
           }
         },
         "required": [
@@ -150,6 +338,14 @@
             "title": "Api Version",
             "type": "string"
           },
+          "content_kinds": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Content Kinds",
+            "type": "array"
+          },
           "embedding_dimension": {
             "anyOf": [
               {
@@ -189,6 +385,13 @@
             "title": "Incremental Sync Supported",
             "type": "boolean"
           },
+          "integration_capabilities": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CapabilityStatus"
+            },
+            "title": "Integration Capabilities",
+            "type": "object"
+          },
           "job_types": {
             "default": [],
             "items": {
@@ -227,6 +430,36 @@
           "engine_version"
         ],
         "title": "CapabilitiesResponse",
+        "type": "object"
+      },
+      "CapabilityStatus": {
+        "description": "One capability reported as three separate facts (Phase 11).\n\n``supported`` and ``enabled`` are deliberately not the same question.\n``supported`` says this build contains the implementation; ``enabled`` says\nTHIS deployment has it wired up. Collapsing them into a single boolean is\nhow an integration contract starts lying: remote asset fetching is\nimplemented and ships disabled, and a consumer told only \"true\" would plan\naround a feature that refuses every call it makes.\n\nA capability advertised here must have a contract test that exercises it.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "supported",
+          "enabled"
+        ],
+        "title": "CapabilityStatus",
         "type": "object"
       },
       "ConnectionTestResponse": {
@@ -294,6 +527,7 @@
         "type": "object"
       },
       "CsvUploadResponse": {
+        "description": "The result of a CSV upload.\n\nROW COUNTS ARE TWO DIFFERENT FACTS, AND THE API SAYS WHICH IS WHICH\nSchema inference reads a BOUNDED SAMPLE of the file\n(``CsvOptions.max_rows_for_schema_inference``); it does not walk the whole\nfile, because inferring a column's type does not require doing so. Reporting\nthat sample as a total row count would be a measurement the pipeline never\ntook, so the two are separate fields and ``rows_observed`` stays ``null``\nuntil something genuinely counts every row.",
         "properties": {
           "columns": {
             "default": 0,
@@ -314,9 +548,25 @@
             "type": "boolean"
           },
           "rows_observed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rows Observed"
+          },
+          "rows_sampled": {
             "default": 0,
-            "title": "Rows Observed",
+            "title": "Rows Sampled",
             "type": "integer"
+          },
+          "sample_limited": {
+            "default": false,
+            "title": "Sample Limited",
+            "type": "boolean"
           },
           "schema_id": {
             "anyOf": [
@@ -328,6 +578,28 @@
               }
             ],
             "title": "Schema Id"
+          },
+          "schema_index_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Index Job Id"
+          },
+          "schema_indexing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Indexing Status"
           },
           "size_bytes": {
             "title": "Size Bytes",
@@ -435,6 +707,28 @@
             "title": "Schema Id",
             "type": "string"
           },
+          "schema_index_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Index Job Id"
+          },
+          "schema_indexing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Indexing Status"
+          },
           "schema_version": {
             "anyOf": [
               {
@@ -469,6 +763,7 @@
         "type": "object"
       },
       "DocumentUploadResponse": {
+        "description": "The result of a PDF or image upload.\n\n``document_id`` is CONTENT-ADDRESSED, matching the identity\n``ai.chunking.chunk_document`` already derives, so the id returned here is\nthe same id a later chunk will carry. Uploading identical bytes twice\ntherefore yields the same document id, and editing the file yields a new\none - which is the property that makes a chunk traceable to its document.",
         "properties": {
           "content_hash": {
             "title": "Content Hash",
@@ -510,6 +805,39 @@
           "filename": {
             "title": "Filename",
             "type": "string"
+          },
+          "index_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index Job Id"
+          },
+          "indexing_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexing Error"
+          },
+          "indexing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexing Status"
           },
           "ocr_used": {
             "default": false,
@@ -576,6 +904,30 @@
           "api_version"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "IdentityFilterFieldResponse": {
+        "description": "One entry of the closed, entity-independent identity/provenance\nfilter set - ``source_system_id``, ``record_key``, ``sensitivity``, and\nso on. These mean the same thing for every entity, so they are listed\nonce rather than repeated under each one.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "filterable": {
+            "default": true,
+            "title": "Filterable",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "IdentityFilterFieldResponse",
         "type": "object"
       },
       "JobAcceptedResponse": {
@@ -844,7 +1196,9 @@
           "document_pipeline",
           "incremental_sync",
           "drift_check",
-          "api_spec_preparation"
+          "api_spec_preparation",
+          "source_native_pipeline",
+          "schema_pipeline"
         ],
         "title": "JobType",
         "type": "string"
@@ -1159,21 +1513,903 @@
         "title": "RecordResponse",
         "type": "object"
       },
-      "SchemaResponse": {
+      "RepresentationResponse": {
+        "description": "One stored representation, with the text a model would actually see.\n\nThis is the only place in the API that returns representation TEXT.\n``GET /v1/search`` deliberately does not: a caller picks which hit is worth\nexpanding, so ranked results stay small and extracted document content is\nexposed once rather than N times per query.\n\nNever carries a vector, and never carries the bytes the text came from.",
         "properties": {
-          "entities": {
+          "business_key_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Key Name"
+          },
+          "business_key_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Key Value"
+          },
+          "canonical_record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Record Id"
+          },
+          "chunk_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Index"
+          },
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Hash"
+          },
+          "content_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Kind"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Kind"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page End"
+          },
+          "page_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Start"
+          },
+          "parent_record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Record Id"
+          },
+          "record_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Key"
+          },
+          "representation_id": {
+            "title": "Representation Id",
+            "type": "string"
+          },
+          "schema_chunk_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Chunk Index"
+          },
+          "schema_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Id"
+          },
+          "schema_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Name"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "sensitivity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity"
+          },
+          "source_entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity"
+          },
+          "source_field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Field"
+          },
+          "source_record_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Record Ids",
+            "type": "array"
+          },
+          "source_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source System Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "representation_id"
+        ],
+        "title": "RepresentationResponse",
+        "type": "object"
+      },
+      "ResponseAdaptOptions": {
+        "description": "Per-request budgets. Every field is optional and defaults to the\nengine's configured value, so a caller who does not care about budgets\nsends nothing and still gets a bounded result.",
+        "properties": {
+          "enable_erp_mapping": {
+            "default": true,
+            "title": "Enable Erp Mapping",
+            "type": "boolean"
+          },
+          "enable_relevance_selection": {
+            "default": true,
+            "title": "Enable Relevance Selection",
+            "type": "boolean"
+          },
+          "max_fields": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Fields"
+          },
+          "max_output_characters": {
+            "anyOf": [
+              {
+                "maximum": 200000.0,
+                "minimum": 100.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Characters"
+          },
+          "max_value_characters": {
+            "anyOf": [
+              {
+                "maximum": 50000.0,
+                "minimum": 10.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Value Characters"
+          },
+          "minimum_relevance_score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Relevance Score"
+          }
+        },
+        "title": "ResponseAdaptOptions",
+        "type": "object"
+      },
+      "ResponseAdaptRequest": {
+        "description": "One already-executed ERP API response, plus the question it answers.\n\nThis endpoint does NOT call an ERP system. The caller has already made the\ncall; what arrives here is what came back.",
+        "example": {
+          "body": {
+            "result": {
+              "approval_status": "A",
+              "curr": "LKR",
+              "cust_ref": "CUS-17",
+              "inv_no": "INV-204",
+              "total_amt": "45000.00"
+            },
+            "success": true
+          },
+          "content_type": "application/json",
+          "endpoint": "/api/invoices/INV-204",
+          "http_status": 200,
+          "query": "How much is invoice INV-204 for?",
+          "source_system_id": "finance_erp"
+        },
+        "properties": {
+          "asset_urls": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ResponseAssetReference"
+            },
+            "title": "Asset Urls",
+            "type": "array"
+          },
+          "body": {
+            "title": "Body"
+          },
+          "body_base64": {
+            "anyOf": [
+              {
+                "maxLength": 20000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Base64"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "entity_hint": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Hint"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "maximum": 599.0,
+                "minimum": 100.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status"
+          },
+          "options": {
+            "$ref": "#/components/schemas/ResponseAdaptOptions"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "sensitivity": {
+            "$ref": "#/components/schemas/SensitivityLevel",
+            "default": "internal"
+          },
+          "source_system_id": {
+            "default": "unknown_erp",
+            "maxLength": 200,
+            "title": "Source System Id",
+            "type": "string"
+          }
+        },
+        "title": "ResponseAdaptRequest",
+        "type": "object"
+      },
+      "ResponseAdaptResponse": {
+        "description": "The adapted response.\n\n``llm_ready`` is the payload to put in front of a model. Everything else is\nevidence: what was detected, what was selected, what was dropped and why,\nand what the transformation measurably cost and saved.",
+        "properties": {
+          "assets": {
             "default": [],
             "items": {
               "additionalProperties": true,
               "type": "object"
             },
+            "title": "Assets",
+            "type": "array"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "llm_ready": {
+            "additionalProperties": true,
+            "title": "Llm Ready",
+            "type": "object"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          },
+          "response_type": {
+            "title": "Response Type",
+            "type": "string"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          },
+          "transformation": {
+            "additionalProperties": true,
+            "title": "Transformation",
+            "type": "object"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "response_type"
+        ],
+        "title": "ResponseAdaptResponse",
+        "type": "object"
+      },
+      "ResponseAssetReference": {
+        "description": "A URL the ERP response referenced.\n\nFetching is refused unless the deployment explicitly enables it AND the URL\npasses the SSRF policy. A caller cannot turn fetching on from the request\nbody - that would let a remote ERP response choose what this service\nconnects to.",
+        "properties": {
+          "declared_content_type": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Content Type"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ResponseAssetReference",
+        "type": "object"
+      },
+      "SchemaEntityResponse": {
+        "description": "One source entity and its fields.",
+        "properties": {
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Kind"
+          },
+          "field_count": {
+            "default": 0,
+            "title": "Field Count",
+            "type": "integer"
+          },
+          "fields": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SchemaFieldResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "normalized_name": {
+            "title": "Normalized Name",
+            "type": "string"
+          },
+          "primary_key_fields": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Primary Key Fields",
+            "type": "array"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "source_name",
+          "normalized_name"
+        ],
+        "title": "SchemaEntityResponse",
+        "type": "object"
+      },
+      "SchemaFieldResponse": {
+        "description": "One source field, with BOTH of its type views.\n\nThe two type fields are not redundant and must not be collapsed:\n\n``source_data_type``      the vendor's own declaration, verbatim -\n                          ``NUMERIC(12,2)``, ``NVARCHAR``, ``ObjectId``.\n                          Precision and vendor spelling are unrecoverable\n                          once discarded, and a consumer generating typed\n                          tooling needs them.\n``normalized_data_type``  the coarse cross-source classification the\n                          mapping engine reasons about.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_array": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Array"
+          },
+          "is_primary_key": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Primary Key"
+          },
+          "is_unique": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Unique"
+          },
+          "nested_path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nested Path"
+          },
+          "normalized_data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Data Type"
+          },
+          "normalized_name": {
+            "title": "Normalized Name",
+            "type": "string"
+          },
+          "nullable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nullable"
+          },
+          "ordinal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordinal"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "semantic_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Type"
+          },
+          "source_data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Data Type"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_name",
+          "normalized_name"
+        ],
+        "title": "SchemaFieldResponse",
+        "type": "object"
+      },
+      "SchemaRelationshipResponse": {
+        "description": "One relationship between two source entities.\n\nField names mirror the ``SourceRelationship`` contract exactly\n(``from_*`` / ``to_*``) rather than being renamed in transit, so a\nconsumer reading the contract and a consumer reading this response are\nlooking at the same thing.",
+        "properties": {
+          "confidence": {
+            "default": 1.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "from_entity": {
+            "title": "From Entity",
+            "type": "string"
+          },
+          "from_fields": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "From Fields",
+            "type": "array"
+          },
+          "relationship_id": {
+            "title": "Relationship Id",
+            "type": "string"
+          },
+          "relationship_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Type"
+          },
+          "to_entity": {
+            "title": "To Entity",
+            "type": "string"
+          },
+          "to_fields": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "To Fields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "relationship_id",
+          "from_entity",
+          "to_entity"
+        ],
+        "title": "SchemaRelationshipResponse",
+        "type": "object"
+      },
+      "SchemaResponse": {
+        "properties": {
+          "entities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SchemaEntityResponse"
+            },
             "title": "Entities",
             "type": "array"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
           },
           "relationship_count": {
             "default": 0,
             "title": "Relationship Count",
             "type": "integer"
+          },
+          "relationships": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SchemaRelationshipResponse"
+            },
+            "title": "Relationships",
+            "type": "array"
           },
           "schema_hash": {
             "anyOf": [
@@ -1221,6 +2457,28 @@
       "SearchHitResponse": {
         "description": "One result. Deliberately has no vector field.",
         "properties": {
+          "canonical_record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Record Id"
+          },
+          "content_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Kind"
+          },
           "entity_type": {
             "anyOf": [
               {
@@ -1248,6 +2506,17 @@
             ],
             "title": "Record Id"
           },
+          "record_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Key"
+          },
           "representation_id": {
             "title": "Representation Id",
             "type": "string"
@@ -1255,6 +2524,28 @@
           "score": {
             "title": "Score",
             "type": "number"
+          },
+          "source_entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity"
+          },
+          "source_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source System Id"
           },
           "tier": {
             "title": "Tier",
@@ -1269,8 +2560,53 @@
         "title": "SearchHitResponse",
         "type": "object"
       },
+      "SearchMetadataResponse": {
+        "additionalProperties": false,
+        "description": "What ``GET /v1/search`` returns when called with no search parameters.\n\nThe single source of search discoverability: which systems and entities\nare known, which of their fields can be filtered, and the fixed\nidentity/provenance filters that apply everywhere. There is no separate\nmetadata or options endpoint - this shape IS ``GET /v1/search``.\n\n``extra=\"forbid\"``: the route's response model is\n``SearchMetadataResponse | SearchResponse``, and the two share no field\nnames. Forbidding extras here means a ``SearchResponse``-shaped payload\ncan never be mistaken for an all-defaults-empty metadata response -\nPydantic is forced to match it against ``SearchResponse`` instead.",
+        "properties": {
+          "available_search": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AvailableSearchEntityResponse"
+            },
+            "title": "Available Search",
+            "type": "array"
+          },
+          "control_parameters": {
+            "default": [
+              "q",
+              "limit",
+              "include_cold",
+              "employee_id"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Control Parameters",
+            "type": "array"
+          },
+          "identity_filters": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IdentityFilterFieldResponse"
+            },
+            "title": "Identity Filters",
+            "type": "array"
+          },
+          "qdrant_indexes_verified": {
+            "default": false,
+            "title": "Qdrant Indexes Verified",
+            "type": "boolean"
+          }
+        },
+        "title": "SearchMetadataResponse",
+        "type": "object"
+      },
       "SearchRequest": {
         "example": {
+          "filters": {
+            "entity_type": "invoice"
+          },
           "include_cold": false,
           "query": "unpaid supplier invoice in euros",
           "top_k": 10
@@ -1278,6 +2614,7 @@
         "properties": {
           "filters": {
             "additionalProperties": true,
+            "description": "Equality filters over identity/provenance fields plus fields from the current discovered source schema. See GET /v1/search (no query parameters) for the live, discoverable set. An unsupported field is rejected, never ignored.",
             "title": "Filters",
             "type": "object"
           },
@@ -1328,6 +2665,13 @@
             "title": "Dimension",
             "type": "integer"
           },
+          "filters_applied": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Filters Applied",
+            "type": "object"
+          },
           "hits": {
             "default": [],
             "items": {
@@ -1371,6 +2715,17 @@
         ],
         "title": "SearchResponse",
         "type": "object"
+      },
+      "SensitivityLevel": {
+        "description": "Handling classification carried by every canonical record.",
+        "enum": [
+          "public",
+          "internal",
+          "confidential",
+          "restricted"
+        ],
+        "title": "SensitivityLevel",
+        "type": "string"
       },
       "SourceCreate": {
         "description": "Register a source. Structural metadata only.",
@@ -1758,6 +3113,14 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "description": "Shared service key for trusted server-to-server integration. Send it as the `X-API-Key` header. Health and documentation routes never require it.",
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
@@ -1916,7 +3279,7 @@
     },
     "/v1/files/documents": {
       "post": {
-        "description": "Upload a PDF or image and extract it through Phase 6.\n\nReturns metadata only - never the extracted text, which is the document's\nentire content.",
+        "description": "Upload a PDF or image, extract it, and start indexing it.\n\nEvery identity field is OPTIONAL, so a client that posts only a file - which\nis what the existing frontend does - behaves exactly as it did before, plus\nthe indexing that used to require a second call.\n\nIdentity is DECLARED, never inferred. A file named\n``EMP002_birth_certificate.jpg`` uploaded without metadata carries no\nbusiness key: see ``orchestration.document_identity`` for why a guess in\nthat field would be worse than an absence.\n\nReturns metadata only - never the extracted text, which is the document's\nentire content.",
         "operationId": "uploadDocument",
         "requestBody": {
           "content": {
@@ -2431,6 +3794,91 @@
         ]
       }
     },
+    "/v1/representations/{representation_id}": {
+      "get": {
+        "description": "Resolve a search hit into the AI text it stands for.\n\nThe ``:path`` converter is required, not decorative: representation ids\ncontain colons and dots (``ai:document:erp_legacy_hr_...``), and the\ndefault converter stops at the first slash.\n\nLooks up by ``representation_id`` rather than ``document_id``, and that\nchoice is load-bearing. Two employees issued the same certificate share a\n``document_id``; resolving by it would collapse their association and hand\nback a row that belongs to whichever was written last.",
+        "operationId": "getRepresentation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "representation_id",
+            "required": true,
+            "schema": {
+              "title": "Representation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepresentationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Representation",
+        "tags": [
+          "representations"
+        ]
+      }
+    },
+    "/v1/responses/adapt": {
+      "post": {
+        "description": "Transform an already-executed ERP API response into LLM-ready context.\n\nReturns 200 even when the adaptation only partly succeeded - a refused\nasset URL or a truncating budget is reported in ``warnings`` and\n``partial``, not as an HTTP error, because the fields that DID adapt are\nstill the answer the caller needs. A 422 means the request itself could not\nbe interpreted.",
+        "operationId": "adaptResponse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponseAdaptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseAdaptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Adapt Response",
+        "tags": [
+          "responses"
+        ]
+      }
+    },
     "/v1/schemas/{schema_id}": {
       "get": {
         "operationId": "getSchema",
@@ -2490,8 +3938,140 @@
       }
     },
     "/v1/search": {
+      "get": {
+        "description": "The one search endpoint: metadata when called bare, search otherwise.\n\nMode is decided by what was actually supplied, not by ``q`` alone:\n\n* No parameters (or only ``limit``/``include_cold``, which shape\n  retrieval but do not name anything to retrieve) -> the live,\n  schema-driven metadata catalog. This is the ONLY metadata surface\n  this API has; there is deliberately no separate options or schema\n  endpoint left to drift out of sync with it.\n* Any identity or dynamic filter - ``source_system_id``,\n  ``source_entity``, ``record_key``, ``employee_id``, or a schema field,\n  bare or bracketed - switches to search mode, WITH or WITHOUT ``q``:\n\n    - with ``q``: semantic ranking inside the filtered scope.\n    - without ``q``: exact identity/metadata retrieval, no ranking.\n      ``source_system_id=legacy_erp_pg&source_entity=hr.employees&\n      record_key=EMP-0001`` therefore returns EMP-0001 directly, with\n      no query text required.\n\nEither way, filters are pushed into Qdrant as a server-side constraint\nBEFORE anything else runs - a ``Filter`` for semantic ranking\n(``HybridVectorStore.search``), a ``scroll`` for exact retrieval\n(``HybridVectorStore.fetch``) - so an exact-scoped call narrows the\ncandidate set itself. Neither path scans the whole collection.",
+        "operationId": "searchGet",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_system_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source System Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_entity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Entity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "employee_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Employee Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_cold",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Cold",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SearchMetadataResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SearchResponse"
+                    }
+                  ],
+                  "title": "Response Searchget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Get",
+        "tags": [
+          "search"
+        ]
+      },
       "post": {
-        "description": "Embed the query with Phase 11, retrieve with Phase 12.\n\nNo LLM and no generated answer: this returns retrieved records, not prose\nabout them. The response carries no vector - a search endpoint that\nreturned embeddings would be an embedding-export endpoint.",
+        "deprecated": true,
+        "description": "Compatibility route for existing clients; prefer ``GET /v1/search``.",
         "operationId": "search",
         "requestBody": {
           "content": {
@@ -2525,7 +4105,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Search",
+        "summary": "Search Post",
         "tags": [
           "search"
         ]

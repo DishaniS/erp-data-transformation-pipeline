@@ -23,7 +23,7 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["erp_pipeline*", "erp_integrations*"]
+include = ["erp_pipeline*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

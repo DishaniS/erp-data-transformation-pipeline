@@ -144,6 +144,13 @@ from erp_pipeline.storage.storage_policy import (
     TierWeights,
 )
 from erp_pipeline.storage.tier_monitor import EvaluationEntry, TierMonitor
+from erp_pipeline.storage.filters import (
+    FILTERABLE_FIELDS,
+    NO_FILTERS,
+    InvalidFilterValueError,
+    SearchFilters,
+    UnknownFilterFieldError,
+)
 from erp_pipeline.storage.vector_router import StoragePolicyRouter
 from erp_pipeline.storage.warm_tier import INT8_BYTES, QdrantWarmTier
 
@@ -186,6 +193,12 @@ __all__ = [
     "DEFAULT_POLICY",
     "DEFAULT_TIER_LOCATIONS",
     "StoragePolicyRouter",
+    # retrieval filters
+    "SearchFilters",
+    "FILTERABLE_FIELDS",
+    "NO_FILTERS",
+    "UnknownFilterFieldError",
+    "InvalidFilterValueError",
     # tiers
     "QdrantHotTier",
     "QdrantWarmTier",

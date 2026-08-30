@@ -38,6 +38,8 @@ from erp_pipeline.storage.errors import (
     VectorIdentityMismatchError,
 )
 from erp_pipeline.storage.hot_tier import FLOAT32_BYTES, _describe_quantization
+from erp_pipeline.storage.payload_indexes import ensure_payload_indexes
+from erp_pipeline.schemas.search_fields import RESERVED_PAYLOAD_FIELDS
 from erp_pipeline.storage.models import (
     MeasurementKind,
     StorageFootprint,
@@ -84,6 +86,11 @@ class QdrantWarmTier:
 
         if self.collection_name in existing:
             if not recreate:
+                # The collection is already here, but it may predate payload
+                # indexing - which is the state every already-deployed cluster
+                # is in. Ensure them and return; nothing is recreated.
+                ensure_payload_indexes(self.client, self.collection_name)
+
                 return
             self.client.delete_collection(self.collection_name)
 
@@ -102,6 +109,11 @@ class QdrantWarmTier:
                 ),
             ),
         )
+
+        # Filtered search on managed Qdrant REQUIRES payload indexes; without
+        # them every filtered query is a 400. Idempotent, and never recreates
+        # the collection just to add one.
+        ensure_payload_indexes(self.client, self.collection_name)
 
     def live_configuration(self) -> dict[str, Any]:
         info = self.client.get_collection(self.collection_name)
@@ -168,6 +180,16 @@ class QdrantWarmTier:
 
         point_id = vector_id_for(record.representation_id)
         self.upsert_calls += 1
+        dynamic_fields = set(payload or {}) - RESERVED_PAYLOAD_FIELDS
+        known = set(getattr(self, "_dynamic_payload_indexes", set()))
+        missing = tuple(sorted(dynamic_fields - known))
+        if missing:
+            report = ensure_payload_indexes(
+                self.client, self.collection_name, field_names=missing
+            )
+            known.update(report["created"])
+            known.update(report["already_present"])
+            self._dynamic_payload_indexes = known
 
         self.client.upsert(
             collection_name=self.collection_name,
@@ -223,8 +245,16 @@ class QdrantWarmTier:
         return True
 
     def search(
-        self, vector: Sequence[float], limit: int = 5
+        self,
+        vector: Sequence[float],
+        limit: int = 5,
+        query_filter: Any | None = None,
     ) -> list[tuple[str, float]]:
+        """Same contract as the HOT tier, including server-side filtering.
+
+        The two must agree: a filter that narrowed HOT but not WARM would make
+        a query's meaning depend on where a record happened to be placed.
+        """
         self.search_calls += 1
 
         results = self.client.query_points(
@@ -232,9 +262,26 @@ class QdrantWarmTier:
             query=list(vector),
             limit=limit,
             with_payload=False,
+            query_filter=query_filter,
         ).points
 
         return [(str(point.id), float(point.score)) for point in results]
+
+    def fetch(
+        self,
+        query_filter: Any,
+        limit: int = 100,
+    ) -> list[tuple[str, Mapping[str, Any]]]:
+        """Same contract as the HOT tier: filter-only, no vector, no score."""
+        points, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            scroll_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        return [(str(point.id), dict(point.payload or {})) for point in points]
 
     def count(self) -> int:
         return int(

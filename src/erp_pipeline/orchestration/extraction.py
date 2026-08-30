@@ -87,6 +87,10 @@ class ExtractionRequest:
     schema: SourceSchema
     entity: SourceEntity
     limit: int = DEFAULT_BATCH_SIZE
+    #: Explicit business-key fields supplied by the job. This is especially
+    #: important for MongoDB, where ``_id`` is provenance rather than the ERP
+    #: employee identity.
+    key_fields: tuple[str, ...] = ()
 
     @property
     def bounded_limit(self) -> int:
@@ -150,7 +154,7 @@ class RelationalSnapshotExtractor(SnapshotExtractor):
         with connection_factory() as connection:
             rows = connection.execute(text(statement)).mappings().all()
 
-        key_fields = request.entity.primary_key_fields
+        key_fields = request.key_fields or request.entity.primary_key_fields
 
         for ordinal, row in enumerate(rows):
             values = dict(row)
@@ -193,12 +197,24 @@ class MongoSnapshotExtractor(SnapshotExtractor):
             values = {
                 key: value for key, value in document.items() if key != "_id"
             }
+            # Never use MongoDB's ObjectId as the business identity. A caller
+            # that wants EMP002 must declare the field that carries EMP002.
+            key = (
+                "|".join(str(values.get(name, "")) for name in request.key_fields)
+                if request.key_fields
+                else None
+            )
             records.append(
                 SourceRecord(
                     values=values,
-                    record_key=str(document.get("_id", ordinal)),
+                    record_key=key,
                     ordinal=ordinal,
                     source_entity=collection_name,
+                    metadata=(
+                        {"source_object_id": str(document["_id"])}
+                        if document.get("_id") is not None
+                        else {}
+                    ),
                 )
             )
 

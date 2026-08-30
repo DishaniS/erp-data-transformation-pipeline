@@ -436,8 +436,15 @@ def _assert_same_vector(
 
 
 def _payload_for(metadata: StorageRecordMetadata) -> dict[str, Any]:
-    """The safe payload stored beside a vector. Identities only, no content."""
-    return {
+    """The safe payload stored beside a vector. Identities only, no content.
+
+    The identity fields are what a server-side retrieval filter matches on, so
+    they must be in the payload rather than only in PostgreSQL. Keys whose
+    value is ``None`` are omitted: a payload key present-and-null and a key
+    absent behave differently under a Qdrant match, and omitting is the
+    honest encoding of "this record has no such value".
+    """
+    payload: dict[str, Any] = {
         "representation_id": metadata.representation_id,
         "embedding_id": metadata.embedding_id,
         "content_hash": metadata.content_hash,
@@ -446,6 +453,51 @@ def _payload_for(metadata: StorageRecordMetadata) -> dict[str, Any]:
         "entity_type": metadata.entity_type,
         "sensitivity": metadata.sensitivity.value,
     }
+
+    optional = {
+        "canonical_record_id": metadata.canonical_record_id,
+        "source_system_id": metadata.source_system_id,
+        "source_entity": metadata.source_entity,
+        "record_key": metadata.record_key,
+        "document_id": metadata.document_id,
+        # -- Phase 4 --
+        # Identity a server-side filter matches on, so the ANN search itself is
+        # constrained rather than the results being trimmed afterwards.
+        "content_kind": metadata.content_kind,
+        "parent_record_id": metadata.parent_record_id,
+        "source_field": metadata.source_field,
+        "business_key_name": metadata.business_key_name,
+        "business_key_value": metadata.business_key_value,
+        "document_type": metadata.document_type,
+        # -- Phase 7 schema provenance --
+        "schema_name": metadata.schema_name,
+        "entity_kind": metadata.entity_kind,
+        "schema_id": metadata.schema_id,
+        "schema_version": metadata.schema_version,
+        "entity_id": metadata.entity_id,
+        "schema_chunk_index": metadata.schema_chunk_index,
+        "logical_key": metadata.logical_key,
+        # Provenance. Stored as the integers they are, not stringified for the
+        # convenience of a filter contract that does not match on them.
+        "page_start": metadata.page_start,
+        "page_end": metadata.page_end,
+        "chunk_index": metadata.chunk_index,
+    }
+
+    payload.update({k: v for k, v in optional.items() if v is not None})
+
+    # Dynamic business attributes are top-level Qdrant payload keys so a GET
+    # query parameter maps to one server-side FieldCondition. Static provenance
+    # always wins on collision.
+    payload.update(
+        {
+            str(key): value
+            for key, value in (metadata.filter_attributes or {}).items()
+            if str(key) not in payload and value is not None
+        }
+    )
+
+    return payload
 
 
 __all__ = [

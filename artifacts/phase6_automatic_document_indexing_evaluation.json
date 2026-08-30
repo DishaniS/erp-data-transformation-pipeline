@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-08-25T09:36:03.358407+00:00",
+  "environment": {
+    "ocr_available": true
+  },
+  "corpus": {
+    "uploads": [
+      {
+        "label": "text pdf",
+        "status_code": 201,
+        "expected_to_index": true,
+        "upload_to_searchable_ms": 47.503,
+        "accepted": true,
+        "document_id": "dd07d8d8c532",
+        "index_job_id": "job_2a83bf03e6bf4aa9a8b0eb3faa0eafbb",
+        "indexing_status": "succeeded"
+      },
+      {
+        "label": "readable image",
+        "status_code": 201,
+        "expected_to_index": true,
+        "upload_to_searchable_ms": 1142.399,
+        "accepted": true,
+        "document_id": "a5f51ed70311",
+        "index_job_id": "job_5af597a2e6694d83aab354ca03805734",
+        "indexing_status": "succeeded"
+      },
+      {
+        "label": "EMP002 certificate",
+        "status_code": 201,
+        "expected_to_index": true,
+        "upload_to_searchable_ms": 31.959,
+        "accepted": true,
+        "document_id": "04e1d648906f",
+        "index_job_id": "job_23d95dd64e564420b45e23ecea6de05d",
+        "indexing_status": "succeeded"
+      },
+      {
+        "label": "EMP003 same certificate",
+        "status_code": 201,
+        "expected_to_index": true,
+        "upload_to_searchable_ms": 14.076,
+        "accepted": true,
+        "document_id": "04e1d648906f",
+        "index_job_id": "job_8c87363df7484ba7a7b243927a888b6b",
+        "indexing_status": "succeeded"
+      },
+      {
+        "label": "generic document",
+        "status_code": 201,
+        "expected_to_index": true,
+        "upload_to_searchable_ms": 25.57,
+        "accepted": true,
+        "document_id": "e7a6125114ec",
+        "index_job_id": "job_1b690e403b2c4f24a045e4d525bc447c",
+        "indexing_status": "succeeded"
+      },
+      {
+        "label": "repeated EMP002 upload",
+        "status_code": 201,
+        "expected_to_index": true,
+        "upload_to_searchable_ms": 14.723,
+        "accepted": true,
+        "document_id": "04e1d648906f",
+        "index_job_id": "job_0dba20a9346d46a88138120bb45a339a",
+        "indexing_status": "succeeded"
+      },
+      {
+        "label": "corrupt document",
+        "status_code": 422,
+        "expected_to_index": false,
+        "upload_to_searchable_ms": 12.879,
+        "accepted": false,
+        "index_job_id": null
+      }
+    ],
+    "representations_indexed": 5,
+    "jobs_recorded": 6
+  },
+  "search": [
+    {
+      "employee": "EMP001",
+      "hits": 1
+    },
+    {
+      "employee": "EMP002",
+      "hits": 1
+    },
+    {
+      "employee": "EMP003",
+      "hits": 1
+    }
+  ],
+  "gates": {
+    "uploads_attempted": 7,
+    "uploads_accepted": 6,
+    "automatic_jobs_created": 6,
+    "jobs_completed": 6,
+    "jobs_failed": 0,
+    "manual_job_calls_required": 0,
+    "wrong_identity_matches": 0,
+    "wrong_document_types": 0,
+    "duplicate_semantic_entries": 0,
+    "unresolvable_hits": 0,
+    "raw_or_base64_leakage": 0,
+    "leak_markers": [],
+    "text_in_qdrant_payload": false,
+    "csv_started_an_index_job": false
+  },
+  "latency_ms": {
+    "upload_to_searchable_median": 28.765,
+    "upload_to_searchable_p95": 47.503,
+    "upload_to_searchable_max": 1142.399,
+    "samples": 6
+  },
+  "passed": true
+}

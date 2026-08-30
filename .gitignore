@@ -323,3 +323,9 @@ cold-archive/
 *.erpcold
 data/raw/
 data/bpi2020/
+
+# Azure deployment secrets (generated 2026-08-28) - never committed
+.env.*
+.azure-suffix
+.azure-pgpass
+.azure-stkey

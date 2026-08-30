@@ -1,0 +1,139 @@
+{
+  "phase": 11,
+  "title": "Four-member integration contracts and demo readiness",
+  "generated_at": "2026-08-25T15:20:06.094932+00:00",
+  "harness": "in-process: a real Member 4 behind a TestClient, with test doubles for Members 1, 2 and 3. Latencies are in-process measurements and say nothing about production ERP latency, which is on Member 2's side of the boundary.",
+  "scenarios_attempted": 21,
+  "scenarios_passed": 21,
+  "scenarios": [
+    {
+      "scenario": "member3_document_upload",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member3_document_search",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member3_restricted_metadata",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member3_csv_upload",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "csv_rows_not_auto_indexed",
+      "passed": true,
+      "detail": "business rows must not bypass mapping or source-native admission"
+    },
+    {
+      "scenario": "member3_schema_search",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member2_json_adaptation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member2_binary_adaptation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member2_collection_limitation_declared",
+      "passed": true,
+      "detail": "first record adapted; the rest are reported, not silently dropped"
+    },
+    {
+      "scenario": "full_read_allow",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "full_write_allow",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "full_write_deny",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "allow_with_conditions_blocks",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "condition_satisfied_then_executes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "service_api_key",
+      "passed": true,
+      "detail": "valid=200 missing=401 wrong=401"
+    },
+    {
+      "scenario": "credential_redaction",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "cors_configurable_and_closed",
+      "passed": true,
+      "detail": "configured='http://localhost:5173' unconfigured=None"
+    },
+    {
+      "scenario": "capabilities_truthful",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "openapi_contract",
+      "passed": true,
+      "detail": "[]"
+    },
+    {
+      "scenario": "member4_made_no_erp_call",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "scenario": "member4_made_no_policy_decision",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "member2_erp_executions_expected": 5,
+  "member2_erp_executions_actual": 5,
+  "gates": {
+    "failed_integration_scenarios": 0,
+    "member4_erp_executions": 0,
+    "member4_policy_decisions": 0,
+    "denied_erp_operations_executed": 0,
+    "wrong_identity_results": 0,
+    "unresolvable_current_hits": 0,
+    "credential_leakage": 0,
+    "cross_member_boundary_violations": 0,
+    "openapi_critical_operation_misses": 0
+  },
+  "all_gates_passed": true,
+  "latency_ms_in_process": {
+    "upload_to_searchable_ms": 189.143,
+    "search_to_resolved_ms": 1314.277,
+    "responses_adapt_ms": 21.071
+  },
+  "known_limitations": [
+    "A collection response adapts its FIRST record only; the caller is warned with the total count. Not redesigned in this phase.",
+    "A credential returned inside an ERP BUSINESS payload is passed through as content. Redaction covers transport metadata - headers, provenance, logs, persistence - not response content.",
+    "Schema retrieval quality is bounded by Phase 7's measured results, which were not tuned here."
+  ]
+}

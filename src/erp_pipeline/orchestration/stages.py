@@ -23,9 +23,16 @@ from __future__ import annotations
 import logging
 from typing import Any, Mapping
 
+from erp_pipeline.ingestion.remote_assets import declared_asset_fields
+from erp_pipeline.schemas.sensitivity import (
+    job_sensitivity,
+    resolve as resolve_sensitivity,
+)
+from erp_pipeline.orchestration.document_identity import DocumentIdentity
 from erp_pipeline.orchestration.errors import (
     InvalidPipelineRequestError,
     MappingNotExecutableError,
+    SourceNativeNotPermittedError,
     UnsupportedCapabilityError,
 )
 from erp_pipeline.orchestration.extraction import (
@@ -34,7 +41,8 @@ from erp_pipeline.orchestration.extraction import (
     RelationalSnapshotExtractor,
     resolve_entity,
 )
-from erp_pipeline.orchestration.models import PipelineStage
+from erp_pipeline.ingestion.binary_assets import binary_field_names_for_entity as binary_field_names
+from erp_pipeline.orchestration.models import JobType, PipelineStage
 from erp_pipeline.orchestration.pipeline import PipelineContext, StageFailure
 from erp_pipeline.schemas.enums import SourceType
 
@@ -126,6 +134,95 @@ def run_map(context: PipelineContext) -> Mapping[str, Any]:
 
 
 # ----------------------------------------------------------------------
+# SOURCE_NATIVE_GUARD - the admission decision (Phase 2)
+# ----------------------------------------------------------------------
+
+
+def run_source_native_guard(context: PipelineContext) -> Mapping[str, Any]:
+    """Decide whether this entity is ALLOWED to be indexed source-natively.
+
+    THIS STAGE EXISTS TO SAY NO.
+
+    Without it, a caller facing an ambiguous mapping - the engine having
+    correctly decided a human must choose between ``invoice.customer_id`` and
+    ``customer.customer_id`` - could simply re-submit the job as source-native
+    and index the data anyway. That would route around the refusal mechanism
+    which is the whole reason the mapping engine is trustworthy, and it would do
+    so silently.
+
+    So admission is decided by ``MappingResult.unmatched_entities``, whose own
+    contract is "source entities no canonical entity could be matched to". That
+    is a statement about VOCABULARY COVERAGE, and it is deliberately not the
+    same question as "did mapping succeed":
+
+        entity matched, fields ambiguous   -> REFUSED, resolve the mapping
+        entity matched, mapping fine       -> REFUSED, use structured_pipeline
+        entity matched to nothing          -> admitted
+
+    A caller who genuinely has an uncovered entity is unaffected. A caller
+    trying to dodge review is stopped, and told exactly what to do instead.
+    """
+    services = context.services
+    request = context.job.request
+
+    if context.schema is None:
+        if not request.schema_id:
+            raise InvalidPipelineRequestError(
+                "a source-native job needs a schema; supply schema_id or run "
+                "discovery"
+            )
+
+        context.schema = services.get_schema(request.schema_id)
+
+    entity = resolve_entity(context.schema, request.entity)
+
+    if services.mapping is None:
+        raise InvalidPipelineRequestError(
+            "the mapping engine is required to decide whether this entity is "
+            "outside the canonical vocabulary; source-native indexing cannot "
+            "be authorised without it"
+        )
+
+    result = services.mapping.generate(context.schema, validate=False)
+    context.mapping_result = result
+
+    unmatched = set(getattr(result, "unmatched_entities", ()) or ())
+    covered = entity.normalized_name not in unmatched and entity.source_name not in unmatched
+
+    if covered:
+        profile = result.profile_for(entity.source_name)
+        coverage = result.coverage
+        ambiguous = getattr(coverage, "ambiguous_fields", 0)
+
+        raise SourceNativeNotPermittedError(
+            f"{entity.source_name!r} matches a canonical entity, so it must go "
+            "through the canonical mapping path. Source-native indexing is for "
+            "entities the canonical model does not cover, and using it here "
+            "would bypass a mapping decision rather than make one."
+            + (
+                f" {ambiguous} field(s) are currently ambiguous and need a "
+                "human decision; resolve them with PUT /v1/mappings/{id} and "
+                "run a structured_pipeline job."
+                if ambiguous
+                else " Run a structured_pipeline job instead."
+            ),
+            entity=entity.source_name,
+            ambiguous_fields=ambiguous,
+            mapping_id=getattr(profile, "mapping_id", None),
+        )
+
+    context.outputs["source_native_entity"] = entity.source_name
+
+    return {
+        "entity": entity.source_name,
+        "admitted": True,
+        "reason": "no canonical entity claims this source entity",
+        "canonical_model": getattr(result, "canonical_model_identity", None),
+        "unmatched_entities": sorted(unmatched),
+    }
+
+
+# ----------------------------------------------------------------------
 # EXTRACT
 # ----------------------------------------------------------------------
 
@@ -143,13 +240,25 @@ def run_extract(context: PipelineContext) -> Mapping[str, Any]:
     entity = resolve_entity(context.schema, request.entity)
     limit = int(request.options.get("limit", 500))
     source_type = context.plan.source_type
+    key_fields = request.options.get("key_fields") or ()
+
+    if isinstance(key_fields, str):
+        key_fields = (key_fields,)
+    else:
+        key_fields = tuple(key_fields)
 
     if source_type is SourceType.CSV:
         records = services.extract_csv_records(request.upload_id, entity, limit)
     else:
         source = services.sources.get(request.source_id)
         records = services.extract_snapshot(
-            source, ExtractionRequest(context.schema, entity, limit)
+            source,
+            ExtractionRequest(
+                context.schema,
+                entity,
+                limit,
+                key_fields=key_fields,
+            ),
         )
 
     context.source_records = tuple(records)
@@ -171,6 +280,9 @@ def run_extract(context: PipelineContext) -> Mapping[str, Any]:
 
 def run_transform(context: PipelineContext) -> Mapping[str, Any]:
     services = context.services
+
+    if context.job.request.job_type is JobType.SOURCE_NATIVE_PIPELINE:
+        return _run_source_native_transform(context)
 
     if context.mapping_profile is None:
         raise MappingNotExecutableError(
@@ -213,6 +325,69 @@ def run_transform(context: PipelineContext) -> Mapping[str, Any]:
         "records_rejected": rejected,
         "records_skipped": skipped,
         "duration_seconds": summary.duration_seconds,
+    }
+
+
+def _run_source_native_transform(context: PipelineContext) -> Mapping[str, Any]:
+    """Transform an admitted uncovered entity under its own field names.
+
+    Reached only after ``run_source_native_guard`` allowed the job, so there is
+    no path from an ambiguous canonical mapping to here.
+    """
+    services = context.services
+    request = context.job.request
+    entity = resolve_entity(context.schema, request.entity)
+
+    # An explicit caller decision outranks anything inferred. A CSV declares no
+    # primary key - the ingestion layer refuses to invent one - so for uploaded
+    # files the caller must SAY which column identifies a record. A database
+    # source usually declares its key and needs nothing here.
+    key_fields = request.options.get("key_fields") or None
+
+    if isinstance(key_fields, str):
+        key_fields = [key_fields]
+
+    result = services.transform_source_native(
+        context.source_records,
+        entity,
+        context.schema,
+        source_type=context.plan.source_type,
+        source_id=request.source_id,
+        key_fields=key_fields,
+        # Declared asset URLs are pointers, not scalar content.
+        asset_url_fields=tuple(declared_asset_fields(request.options)),
+        # Phase 10: a job-wide declaration, applied to every record it builds.
+        sensitivity=resolve_sensitivity(job=job_sensitivity(request.options)),
+    )
+
+    context.canonical_records = tuple(result.records)
+    context.counters = context.counters.merged(
+        records_transformed=len(context.canonical_records),
+        records_failed=len(result.rejected),
+    )
+
+    if result.rejected:
+        context.partial_reasons.append(
+            f"{len(result.rejected)} record(s) had no stable identity and were "
+            "not indexed"
+        )
+        for note in result.rejected[:5]:
+            context.note(note)
+
+    if result.binary_fields_omitted:
+        # Stated rather than assumed: a caller must not think a birth
+        # certificate was read just because the row carrying it was indexed.
+        context.note(
+            "binary field(s) "
+            f"{list(result.binary_fields_omitted)} were recorded but not "
+            "opened; extracting their content is not part of this pipeline"
+        )
+
+    return {
+        "records_transformed": len(context.canonical_records),
+        "records_rejected": len(result.rejected),
+        "binary_fields_omitted": list(result.binary_fields_omitted),
+        "mode": "source_native",
     }
 
 
@@ -271,11 +446,26 @@ def run_load(context: PipelineContext) -> Mapping[str, Any]:
 # ----------------------------------------------------------------------
 
 
+#: How far past an entity's current representation count to look for stale
+#: field groups left by a wider previous version. A table shedding more than
+#: this many field groups in one revision is rare enough that the leftovers are
+#: better handled by an explicit re-index than by an unbounded scan on every
+#: schema job.
+_PRUNE_LOOKAHEAD = 8
+
+
 def run_ai_build(context: PipelineContext) -> Mapping[str, Any]:
     services = context.services
 
+    if context.job.request.job_type is JobType.SCHEMA_PIPELINE:
+        return _build_schema_representations(context)
+
     if context.document is not None:
-        representations = services.build_document_representations(context.document)
+        # Declared by the upload, never inferred from the filename.
+        identity = DocumentIdentity.from_options(context.job.request.options)
+        representations = services.build_document_representations(
+            context.document, identity
+        )
         context.representations = tuple(representations)
         context.counters = context.counters.merged(
             chunks_built=len(context.representations),
@@ -294,8 +484,217 @@ def run_ai_build(context: PipelineContext) -> Mapping[str, Any]:
 
 
 # ----------------------------------------------------------------------
+# MULTIMODAL_EXTRACT - database BLOBs as documents (Phase 3)
+# ----------------------------------------------------------------------
+
+
+def run_multimodal_extract(context: PipelineContext) -> Mapping[str, Any]:
+    """Open the binary fields the source rows carried.
+
+    Runs AFTER ``AI_BUILD`` for two concrete reasons:
+
+    * ``AI_BUILD`` ASSIGNS ``context.representations``. Producing document
+      representations before it would have them overwritten.
+    * the parent record ids only exist once ``TRANSFORM`` has run, and a
+      document with no stable parent is a vector nobody can trace back.
+
+    Both the raw ``source_records`` and the transformed ``canonical_records``
+    are still on the context at this point, which is the only place in the
+    pipeline where that is true.
+
+    A row with no binary column costs one dictionary lookup and returns
+    immediately, so the stage is close to free for ordinary ERP tables.
+    """
+    services = context.services
+
+    if not context.source_records or context.schema is None:
+        return {"binary_fields_seen": 0, "note": "no records to inspect"}
+
+    entity = resolve_entity(context.schema, context.job.request.entity)
+    binary_fields = binary_field_names(entity)
+    # Phase 8: fields a caller explicitly declared as remote references. Never
+    # inferred from a column name, and never from a value that looks like a URL.
+    asset_url_fields = declared_asset_fields(context.job.request.options)
+
+    if not binary_fields and not asset_url_fields:
+        return {
+            "binary_fields_seen": 0,
+            "note": (
+                "this entity declares no binary fields and the job declared no "
+                "remote asset fields"
+            ),
+        }
+
+    if services.embedding is None:
+        context.note(
+            "binary fields were found but no embedding service is configured, "
+            "so their documents were not indexed"
+        )
+
+    result = services.extract_binary_assets(
+        context.source_records,
+        context.canonical_records,
+        entity,
+        binary_fields,
+        asset_url_fields=asset_url_fields,
+        field_sensitivity=(context.job.request.options or {}).get(
+            "field_sensitivity"
+        ),
+        job_sensitivity=job_sensitivity(context.job.request.options),
+    )
+
+    # APPENDED, never assigned - the scalar representations AI_BUILD produced
+    # must survive alongside the document ones.
+    context.representations = tuple(context.representations) + result.representations
+
+    for warning in result.warnings[:10]:
+        context.note(warning)
+
+    if result.skipped:
+        context.partial_reasons.append(
+            f"{result.skipped} binary asset(s) could not be indexed"
+        )
+
+    context.counters = context.counters.merged(
+        binary_fields_seen=result.fields_seen,
+        binary_assets_extracted=result.extracted,
+        binary_assets_skipped=result.skipped,
+        ocr_assets=result.ocr_assets,
+        remote_assets_attempted=getattr(result, "remote_assets", 0),
+        documents_ingested=result.extracted,
+        chunks_built=len(result.representations),
+        representations_built=(context.counters.representations_built or 0)
+        + len(result.representations),
+    )
+
+    return {
+        "binary_fields_seen": result.fields_seen,
+        "binary_assets_extracted": result.extracted,
+        "binary_assets_skipped": result.skipped,
+        "ocr_assets": result.ocr_assets,
+        "remote_assets_attempted": getattr(result, "remote_assets", 0),
+        "document_chunks_built": len(result.representations),
+        # Per-asset outcomes, with no bytes and no extracted text.
+        "assets": [item.to_dict() for item in result.assets[:25]],
+    }
+
+
+# ----------------------------------------------------------------------
 # EMBED - Phase 11
 # ----------------------------------------------------------------------
+
+
+def _build_schema_representations(context: PipelineContext) -> Mapping[str, Any]:
+    """Turn a catalogued schema into searchable structure.
+
+    Also PRUNES. A table that needed four field groups and now needs two leaves
+    two representations behind describing columns that no longer exist. Left
+    alone they would keep answering questions about a schema that changed,
+    which is worse than not indexing the table at all - a stale answer is
+    indistinguishable from a current one.
+    """
+    from erp_pipeline.ai.schema_representation import (
+        representation_ids_for_entity,
+        source_entity_to_representations,
+    )
+
+    services = context.services
+    schema = services.get_schema(context.job.request.schema_id)
+    context.schema = schema
+
+    wanted = context.job.request.entity
+    entities = [
+        entity
+        for entity in getattr(schema, "entities", ()) or ()
+        if wanted is None
+        or wanted in (entity.source_name, entity.normalized_name, entity.entity_id)
+    ]
+
+    if wanted and not entities:
+        raise StageFailure(
+            f"entity {wanted!r} is not part of schema "
+            f"{context.job.request.schema_id!r}",
+            code="ENTITY_NOT_IN_SCHEMA",
+        )
+
+    built: list[Any] = []
+    pruned = 0
+    store = getattr(services, "representations", None)
+
+    for entity in entities:
+        representations = source_entity_to_representations(
+            schema, entity, None,
+            resolve_sensitivity(job=job_sensitivity(context.job.request.options)),
+        )
+        built.extend(representations)
+
+        if store is None:
+            continue
+
+        # Anything this entity used to occupy beyond what it now needs.
+        for index in range(
+            len(representations), len(representations) + _PRUNE_LOOKAHEAD
+        ):
+            stale = representation_ids_for_entity(entity.entity_id, index + 1)[-1]
+
+            if store.get(stale) is not None and store.delete(stale):
+                pruned += 1
+
+    context.representations = tuple(built)
+    context.counters = context.counters.merged(
+        representations_built=len(built),
+        schema_entities_indexed=len(entities),
+        schema_representations_pruned=pruned,
+    )
+
+    return {
+        "schema_id": getattr(schema, "schema_id", None),
+        "schema_entities_indexed": len(entities),
+        "representations_built": len(built),
+        "schema_representations_pruned": pruned,
+    }
+
+
+def run_persist_representations(context: PipelineContext) -> Mapping[str, Any]:
+    """Write the AI text to durable storage BEFORE anything is embedded.
+
+    The ordering is the whole point. ``TIER_ROUTE`` is what makes a vector
+    searchable, so persisting anywhere after it would leave a window in which a
+    search could return a hit nobody can resolve - which is the exact defect
+    Phase 5 exists to close. Persisting first inverts the failure: if this
+    stage succeeds and a later one fails, the corpus holds text with no vector,
+    which returns no wrong answers and is repaired by re-running the job.
+
+    NOT ATOMIC ACROSS STORES. PostgreSQL and Qdrant are two systems and this
+    pipeline has no distributed transaction. What is guaranteed is the ORDER,
+    and the direction of the failure window that follows from it.
+
+    A deployment with no representation store configured runs exactly as it did
+    before Phase 5: the stage records that it stored nothing and says why,
+    rather than failing a job that was previously valid.
+    """
+    services = context.services
+    store = getattr(services, "representations", None)
+
+    if store is None:
+        context.note(
+            "no representation store is configured, so the AI text for these "
+            "vectors will not be resolvable through the representation API"
+        )
+        return {
+            "representations_persisted": 0,
+            "note": "no representation store is configured",
+        }
+
+    if not context.representations:
+        return {"representations_persisted": 0, "note": "nothing to persist"}
+
+    persisted = store.upsert_many(context.representations)
+    context.counters = context.counters.merged(
+        representations_persisted=int(persisted or 0)
+    )
+
+    return {"representations_persisted": int(persisted or 0)}
 
 
 def run_embed(context: PipelineContext) -> Mapping[str, Any]:
@@ -561,6 +960,7 @@ INCREMENTAL_HANDLERS = {
     PipelineStage.VALIDATE: run_incremental_passthrough,
     PipelineStage.LOAD: run_incremental_passthrough,
     PipelineStage.AI_BUILD: run_incremental_passthrough,
+    PipelineStage.PERSIST_REPRESENTATIONS: run_incremental_passthrough,
     PipelineStage.EMBED: run_incremental_passthrough,
     PipelineStage.TIER_UPDATE: run_incremental_passthrough,
 }
@@ -569,11 +969,14 @@ INCREMENTAL_HANDLERS = {
 DEFAULT_HANDLERS = {
     PipelineStage.DISCOVER: run_discover,
     PipelineStage.MAP: run_map,
+    PipelineStage.SOURCE_NATIVE_GUARD: run_source_native_guard,
     PipelineStage.EXTRACT: run_extract,
     PipelineStage.TRANSFORM: run_transform,
     PipelineStage.VALIDATE: run_validate,
     PipelineStage.LOAD: run_load,
     PipelineStage.AI_BUILD: run_ai_build,
+    PipelineStage.MULTIMODAL_EXTRACT: run_multimodal_extract,
+    PipelineStage.PERSIST_REPRESENTATIONS: run_persist_representations,
     PipelineStage.EMBED: run_embed,
     PipelineStage.TIER_ROUTE: run_tier_route,
     PipelineStage.TIER_UPDATE: run_tier_route,
@@ -586,3 +989,140 @@ DEFAULT_HANDLERS = {
 
 
 __all__ = ["DEFAULT_HANDLERS", "INCREMENTAL_HANDLERS"]
+
+
+def run_lifecycle_commit(context: PipelineContext) -> Mapping[str, Any]:
+    """Make this run's representations the current version of their ERP slots.
+
+    ORDER IS THE WHOLE POINT. This runs after PERSIST, EMBED and TIER_ROUTE
+    have all succeeded, so the sequence is:
+
+        build B -> persist B -> embed B -> store B -> promote B -> supersede A
+
+    never
+
+        delete A -> build B -> B fails -> nothing searchable
+
+    A failure at any earlier stage means this never runs, and A stays current.
+    That is the invariant: a failed replacement must not destroy the last
+    version that worked.
+
+    Superseding marks state and registry FIRST and deletes the physical vector
+    afterwards. If the delete fails, the vector is already excluded from search
+    by ``is_current`` and is recorded for reconciliation - a cleanup backlog
+    rather than a wrong answer.
+    """
+    from erp_pipeline.orchestration.lifecycle import (
+        content_generation,
+        group_by_slot,
+    )
+
+    services = context.services
+    registry = getattr(services, "lifecycle", None)
+
+    if registry is None or not context.representations:
+        return {"slots_promoted": 0, "note": "no lifecycle registry configured"}
+
+    grouped = group_by_slot(context.representations)
+
+    if not grouped:
+        # Nothing here occupies a managed slot - anonymous uploads, say.
+        return {"slots_promoted": 0, "note": "no representations occupy a slot"}
+
+    promoted = superseded = removed = deferred = 0
+
+    for logical_key, members in grouped.items():
+        generation = content_generation(members)
+        result = registry.replace_current(
+            logical_key,
+            [item.representation_id for item in members],
+            generation,
+            sync_run_id=context.job.job_id,
+        )
+
+        if result.unchanged:
+            continue
+
+        promoted += 1
+        _mark_current(context, [item.representation_id for item in members], True,
+                      logical_key)
+
+        for stale in result.superseded:
+            superseded += 1
+            # State first: search must stop returning it even if the physical
+            # delete below fails.
+            _mark_current(context, [stale], False, logical_key)
+
+            if _remove_vector(context, stale):
+                registry.mark_cleaned(logical_key, stale)
+                removed += 1
+            else:
+                deferred += 1
+
+    context.counters = context.counters.merged(
+        slots_promoted=promoted,
+        representations_superseded=superseded,
+        stale_vectors_removed=removed,
+        stale_cleanup_deferred=deferred,
+    )
+
+    if deferred:
+        context.partial_reasons.append(
+            f"{deferred} superseded vector(s) could not be removed and are "
+            "excluded from search pending reconciliation"
+        )
+
+    return {
+        "slots_promoted": promoted,
+        "representations_superseded": superseded,
+        "stale_vectors_removed": removed,
+        "stale_cleanup_deferred": deferred,
+    }
+
+
+def _mark_current(
+    context: PipelineContext,
+    representation_ids: Sequence[str],
+    current: bool,
+    logical_key: str,
+) -> None:
+    """Record in authoritative state whether these vectors are current."""
+    from dataclasses import replace
+
+    storage = getattr(context.services, "storage", None)
+    state = getattr(storage, "state", None)
+
+    if state is None:
+        return
+
+    for representation_id in representation_ids:
+        metadata = state.load(representation_id)
+
+        if metadata is None:
+            continue
+
+        try:
+            state.save(
+                replace(metadata, is_current=current, logical_key=logical_key),
+                expected_version=metadata.version,
+            )
+        except Exception:  # noqa: BLE001 - a concurrent write wins; search is
+            # still correct because the winner is a live write of this vector.
+            continue
+
+
+def _remove_vector(context: PipelineContext, representation_id: str) -> bool:
+    """Delete one superseded vector. Never raises."""
+    storage = getattr(context.services, "storage", None)
+
+    if storage is None or not hasattr(storage, "delete"):
+        return False
+
+    try:
+        return bool(storage.delete(representation_id))
+    except Exception:  # noqa: BLE001 - a failed delete is a backlog item
+        return False
+
+
+DEFAULT_HANDLERS[PipelineStage.LIFECYCLE_COMMIT] = run_lifecycle_commit
+INCREMENTAL_HANDLERS[PipelineStage.LIFECYCLE_COMMIT] = run_lifecycle_commit

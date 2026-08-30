@@ -41,7 +41,7 @@ convention: raw values live in ``TabularFileResult.iter_records()`` and
 and piece of schema metadata carries counts and positions only. See
 ``models`` for the full rule.
 
-This package never imports ``bpi2020``.
+This package never imports a dataset-specific module.
 """
 
 from __future__ import annotations
@@ -63,6 +63,16 @@ from erp_pipeline.ingestion.detection import (
     EXTENSION_MAP,
     DetectionResult,
     detect_file_type,
+)
+from erp_pipeline.ingestion.document_classification import (
+    DEFAULT_CONFIG,
+    DEFAULT_RULES,
+    UNCLASSIFIED,
+    ClassificationConfig,
+    ClassificationResult,
+    ClassificationRule,
+    classify_document,
+    classify_extracted_document,
 )
 from erp_pipeline.ingestion.errors import (
     EncryptedPDFError,
@@ -160,6 +170,15 @@ __all__ = [
     "render_source_data_type",
     "detect_encoding",
     "detect_delimiter",
+    # document classification
+    "ClassificationRule",
+    "ClassificationConfig",
+    "ClassificationResult",
+    "DEFAULT_RULES",
+    "DEFAULT_CONFIG",
+    "UNCLASSIFIED",
+    "classify_document",
+    "classify_extracted_document",
     # OCR capability
     "OcrCapability",
     "probe_ocr",

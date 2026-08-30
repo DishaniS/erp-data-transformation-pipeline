@@ -37,9 +37,11 @@ from erp_pipeline.orchestration.errors import (
     JobConflictError,
     JobNotFoundError,
     MappingNotExecutableError,
+    SourceNativeNotPermittedError,
     MappingNotFoundError,
     OrchestrationError,
     RecordNotFoundError,
+    RepresentationNotFoundError,
     RetryNotSupportedError,
     SchemaNotFoundError,
     SecretUnavailableError,
@@ -105,6 +107,22 @@ from erp_pipeline.orchestration.record_store import (
     PostgresCanonicalRecordStore,
     bootstrap_record_schema,
 )
+from erp_pipeline.orchestration.representation_store import (
+    InMemoryRepresentationStore,
+    PostgresRepresentationStore,
+    bootstrap_representation_schema,
+)
+from erp_pipeline.orchestration.lifecycle import (
+    InMemoryLifecycleRegistry,
+    bootstrap_lifecycle_schema,
+    logical_key_for,
+)
+from erp_pipeline.orchestration.scheduler import (
+    ScheduledSource,
+    SchedulerConfig,
+    SyncScheduler,
+    bootstrap_scheduler_schema,
+)
 from erp_pipeline.orchestration.secrets import (
     EnvironmentSecretProvider,
     InMemorySecretProvider,
@@ -137,10 +155,12 @@ __all__ = [
     "SchemaNotFoundError",
     "MappingNotFoundError",
     "RecordNotFoundError",
+    "RepresentationNotFoundError",
     "UploadNotFoundError",
     "UnsupportedCapabilityError",
     "InvalidPipelineRequestError",
     "MappingNotExecutableError",
+    "SourceNativeNotPermittedError",
     "UploadTooLargeError",
     "UnsupportedUploadError",
     "UnsafeUploadNameError",
@@ -182,6 +202,16 @@ __all__ = [
     "JOBS_TABLE",
     "STAGES_TABLE",
     "PostgresCanonicalRecordStore",
+    "InMemoryRepresentationStore",
+    "InMemoryLifecycleRegistry",
+    "bootstrap_lifecycle_schema",
+    "logical_key_for",
+    "ScheduledSource",
+    "SchedulerConfig",
+    "SyncScheduler",
+    "bootstrap_scheduler_schema",
+    "PostgresRepresentationStore",
+    "bootstrap_representation_schema",
     "bootstrap_record_schema",
     "RECORD_SCHEMA_NAME",
     # sources, secrets, uploads

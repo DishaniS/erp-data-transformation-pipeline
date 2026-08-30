@@ -1,0 +1,221 @@
+{
+  "generated_at": "2026-08-25T08:06:21.542507+00:00",
+  "corpus": {
+    "representations_indexed": 9,
+    "employees": 3,
+    "composite_key_records": 2,
+    "shared_certificate_employees": [
+      "EMP002",
+      "EMP003"
+    ]
+  },
+  "contract": {
+    "filterable_fields": [
+      "entity_type",
+      "source_system_id",
+      "source_entity",
+      "sensitivity",
+      "document_id",
+      "content_kind",
+      "parent_record_id",
+      "source_field",
+      "business_key_name",
+      "business_key_value",
+      "document_type"
+    ],
+    "provenance_only_fields": [
+      "page_start",
+      "page_end",
+      "chunk_index"
+    ]
+  },
+  "queries": [
+    {
+      "name": "emp002 certificate chunks",
+      "filters": {
+        "business_key_name": "employee_id",
+        "business_key_value": "EMP002",
+        "document_type": "birth_certificate",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.8438
+    },
+    {
+      "name": "emp003 certificate chunks",
+      "filters": {
+        "business_key_value": "EMP003",
+        "document_type": "birth_certificate",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.9238
+    },
+    {
+      "name": "emp001 certificate chunks",
+      "filters": {
+        "business_key_value": "EMP001",
+        "document_type": "birth_certificate",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.3919
+    },
+    {
+      "name": "emp002 everything",
+      "filters": {
+        "business_key_value": "EMP002"
+      },
+      "hits": 3,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.2254
+    },
+    {
+      "name": "emp002 contract",
+      "filters": {
+        "business_key_value": "EMP002",
+        "document_type": "employment_contract",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.3076
+    },
+    {
+      "name": "emp002 photo",
+      "filters": {
+        "business_key_value": "EMP002",
+        "document_type": "profile_photo",
+        "content_kind": "document_chunk"
+      },
+      "hits": 0,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.1979
+    },
+    {
+      "name": "emp002 structured only",
+      "filters": {
+        "business_key_value": "EMP002",
+        "content_kind": "structured_record"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.18
+    },
+    {
+      "name": "emp002 documents only",
+      "filters": {
+        "business_key_value": "EMP002",
+        "content_kind": "document_chunk"
+      },
+      "hits": 2,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.1894
+    },
+    {
+      "name": "emp002 by source field",
+      "filters": {
+        "business_key_value": "EMP002",
+        "source_field": "birth_certificate",
+        "content_kind": "document_chunk"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.3339
+    },
+    {
+      "name": "emp002 by parent record",
+      "filters": {
+        "parent_record_id": "erp:legacy_hr:employees:emp002"
+      },
+      "hits": 2,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.1697
+    },
+    {
+      "name": "composite warehouse key",
+      "filters": {
+        "business_key_value": "WH-1|P-77"
+      },
+      "hits": 1,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.2298
+    },
+    {
+      "name": "legacy filter: entity_type",
+      "filters": {
+        "entity_type": "employees"
+      },
+      "hits": 3,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.2014
+    },
+    {
+      "name": "legacy filter: source_system",
+      "filters": {
+        "source_system_id": "legacy_hr"
+      },
+      "hits": 7,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.3946
+    },
+    {
+      "name": "legacy filter: sensitivity",
+      "filters": {
+        "sensitivity": "internal"
+      },
+      "hits": 9,
+      "wrong_identity": 0,
+      "wrong_document_type": 0,
+      "wrong_content_kind": 0,
+      "latency_ms": 0.2289
+    }
+  ],
+  "gates": {
+    "queries_attempted": 14,
+    "wrong_identity_matches": 0,
+    "wrong_document_type_matches": 0,
+    "content_kind_leakage": 0,
+    "incomplete_provenance": 0,
+    "hot_warm_parity_failures": 0,
+    "unknown_filters_accepted": 0,
+    "unknown_filters_refused": 7,
+    "raw_content_leakage": 0,
+    "leak_markers": []
+  },
+  "latency_ms": {
+    "median": 0.2293,
+    "p95": 0.8438,
+    "max": 0.9238
+  },
+  "passed": true
+}

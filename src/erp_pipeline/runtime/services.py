@@ -15,10 +15,12 @@ simply never selected here.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from erp_pipeline.runtime.settings import (
     COLD_KEY_VARIABLE,
+    FILTER_TOKEN_KEY_VARIABLE,
     ConfigurationError,
     QdrantSettings,
     RuntimeSettings,
@@ -35,6 +37,11 @@ def build_qdrant_client(settings: QdrantSettings) -> Any:
     logged, echoed or placed in an error message.
     """
     from qdrant_client import QdrantClient
+
+    # Fail fast, before any connection is attempted. A cloud deployment whose
+    # URL or key did not arrive must stop here rather than reach whatever is
+    # listening on localhost.
+    settings.validate()
 
     if settings.uses_url:
         return QdrantClient(
@@ -57,6 +64,7 @@ def build_storage_service(settings: RuntimeSettings, engine: Any) -> Any:
     Returns ``None`` when vectors are disabled, so a deployment without Qdrant
     still serves everything that does not need them.
     """
+    from erp_pipeline.storage.storage_policy import StoragePolicy
     from erp_pipeline.storage import (
         ColdArchiveTier,
         EnvironmentKeyProvider,
@@ -100,6 +108,12 @@ def build_storage_service(settings: RuntimeSettings, engine: Any) -> Any:
         cold=cold,
         # The durable tier state - never InMemoryTierStateStore in production.
         state_store=PostgresTierStateStore(engine),
+        # The policy carries this deployment's REAL tier locations, so the
+        # restricted-data constraint is evaluated against where the data
+        # actually goes rather than against a code-level default.
+        policy=StoragePolicy(
+            tier_locations=settings.storage_locations.as_tier_map()
+        ),
     )
 
 
@@ -198,6 +212,7 @@ def build_production_services(
         EnvironmentSecretProvider,
         PipelineServices,
         PostgresCanonicalRecordStore,
+        PostgresRepresentationStore,
     )
     from erp_pipeline.runtime.database import build_pipeline_engine
     from erp_pipeline.runtime.persistence import (
@@ -219,6 +234,7 @@ def build_production_services(
         transformation=TransformationService(),
         # -- durable stores --
         records=PostgresCanonicalRecordStore(active_engine),
+        representations=PostgresRepresentationStore(active_engine),
         sources=PostgresSourceRegistry(active_engine),
         uploads=PostgresUploadStore(
             resolved.api.upload_dir,
@@ -264,15 +280,35 @@ class _LazyEmbeddingService:
 
     def __init__(self) -> None:
         self._service: Any = None
+        # Read once, directly from the environment - not through _load():
+        # tokenizing a filter value needs no model, and a filter-only search
+        # (no ``q``) should not be forced to load one just to answer
+        # "what token stands for this value".
+        self._filter_token_secret = os.environ.get(FILTER_TOKEN_KEY_VARIABLE) or None
 
     def _load(self) -> Any:
         if self._service is None:
             from erp_pipeline.ai import EmbeddingService, SentenceTransformerModel
 
             LOGGER.info("loading the embedding model on first use")
-            self._service = EmbeddingService(SentenceTransformerModel())
+            self._service = EmbeddingService(
+                SentenceTransformerModel(),
+                filter_token_secret=self._filter_token_secret,
+            )
 
         return self._service
+
+    def tokenize_filter_value(self, **kwargs: Any) -> str | None:
+        """Mirrors ``EmbeddingService.tokenize_filter_value`` without
+        loading the model - see ``model_id``/``dimension`` above for the
+        same pattern applied to metadata instead of a token.
+        """
+        if not self._filter_token_secret:
+            return None
+
+        from erp_pipeline.schemas.search_fields import filter_value_token
+
+        return filter_value_token(self._filter_token_secret, **kwargs)
 
     @property
     def loaded(self) -> bool:

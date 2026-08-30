@@ -45,6 +45,17 @@ class RecordNotFoundError(OrchestrationError):
     code = "RECORD_NOT_FOUND"
 
 
+class RepresentationNotFoundError(OrchestrationError):
+    """No stored representation for that id.
+
+    Distinct from ``RECORD_NOT_FOUND`` so a caller can tell "this ERP record
+    does not exist" apart from "this record exists but its AI text was never
+    persisted" - which are different problems with different fixes.
+    """
+
+    code = "REPRESENTATION_NOT_FOUND"
+
+
 class UploadNotFoundError(OrchestrationError):
     code = "UPLOAD_NOT_FOUND"
 
@@ -62,6 +73,18 @@ class UnsupportedCapabilityError(OrchestrationError):
 
 class InvalidPipelineRequestError(OrchestrationError):
     code = "INVALID_PIPELINE_REQUEST"
+
+
+class SourceNativeNotPermittedError(OrchestrationError):
+    """A source-native job named an entity the canonical model DOES cover.
+
+    Refused so that source-native indexing cannot become a route around a
+    mapping decision. The detail carries the ambiguous-field count and the
+    mapping id, so the caller is told what to resolve rather than only that
+    they were stopped.
+    """
+
+    code = "SOURCE_NATIVE_NOT_PERMITTED"
 
 
 class MappingNotExecutableError(OrchestrationError):

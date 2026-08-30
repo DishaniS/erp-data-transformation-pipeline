@@ -573,54 +573,68 @@ def test_phase_10_does_not_import_phase_11():
 
 
 # ============================================================
-# BPI compatibility (Steps 39, 40)
+# Process-case representations (was: BPI compatibility)
 # ============================================================
+#
+# This section once asserted that the dataset prototype's embedding helpers
+# were left untouched and that the generic text builder deliberately differed
+# from theirs. The prototype has been consolidated away, so there is no second
+# builder left to differ from.
+#
+# What replaced it is the property that actually matters now: a process CASE
+# and a canonical RECORD are different shapes, and both must project into the
+# same AIRepresentation contract so the one embedding path serves both.
 
-def test_the_bpi_embedding_helpers_are_untouched():
-    """Step 39: existing production behaviour is not rewritten."""
-    from bpi2020.embeddings.generate_and_store_embeddings import (
-        build_embedding_text,
-        make_qdrant_payload,
+
+def test_a_case_and_a_record_both_project_into_one_representation_contract():
+    from erp_pipeline.process import EventLogConfig, ProcessCaseService
+
+    service = ProcessCaseService(
+        "erp_demo",
+        EventLogConfig(
+            case_id_field="case_id",
+            activity_field="activity",
+            timestamp_field="ts",
+            process_type="declarations",
+        ),
     )
-    from bpi2020.common.stable_ids import make_qdrant_point_id
+    case = service.build_cases(
+        [
+            {"case_id": "c1", "activity": "SUBMITTED", "ts": "2026-01-01"},
+            {"case_id": "c1", "activity": "APPROVED", "ts": "2026-01-03"},
+        ]
+    )[0]
 
-    assert callable(build_embedding_text)
-    assert callable(make_qdrant_payload)
-    assert callable(make_qdrant_point_id)
+    from_case = service.to_representation(case)
+    from_record = canonical_record_to_representation(make_record())
+
+    for representation in (from_case, from_record):
+        assert representation.representation_id
+        assert representation.text_for_ai
+        assert representation.resolved_hash()
+        assert representation.vector_id
 
 
-def test_the_bpi_script_does_not_import_phase_11():
-    source = Path(
-        "src/bpi2020/embeddings/generate_and_store_embeddings.py"
-    ).read_text(encoding="utf-8")
+def test_a_case_representation_is_labelled_as_a_process_case():
+    """A retrieval consumer must be able to tell the two shapes apart."""
+    from erp_pipeline.process import EventLogConfig, ProcessCaseService
 
-    assert "erp_pipeline" not in source
-
-
-def test_the_generic_text_differs_from_bpi_and_that_is_documented():
-    """Step 40: a deliberate difference, stated rather than hidden.
-
-    BPI's ``build_embedding_text`` emits ``Record type / Title / Process type /
-    Content`` over a UNIFIED record. The generic builder emits labelled
-    canonical fields over a CanonicalRecord. They are different projections of
-    different inputs, so they are NOT expected to match - and Phase 10's BPI
-    cascade deliberately keeps using the BPI builder, so nothing in production
-    silently changes.
-    """
-    from bpi2020.embeddings.generate_and_store_embeddings import (
-        build_embedding_text,
+    service = ProcessCaseService(
+        "erp_demo",
+        EventLogConfig(
+            case_id_field="case_id",
+            activity_field="activity",
+            process_type="declarations",
+        ),
     )
+    case = service.build_cases(
+        [{"case_id": "c1", "activity": "SUBMITTED"}], derive_process_model=False
+    )[0]
 
-    bpi_text = build_embedding_text(
-        {
-            "record_type": "erp_case",
-            "title": "ERP Case X",
-            "text_for_ai": "summary",
-            "metadata": {"process_type": "RequestForPayment"},
-        }
-    )
-    generic_text = canonical_record_to_representation(make_record()).text_for_ai
+    representation = service.to_representation(case)
 
-    assert bpi_text.startswith("Record type:")
-    assert generic_text.startswith("Entity:")
-    assert bpi_text != generic_text
+    assert representation.text_for_ai.startswith("Process case ")
+    assert representation.metadata["record_type"] == "case"
+    assert canonical_record_to_representation(
+        make_record()
+    ).text_for_ai.startswith("Entity:")

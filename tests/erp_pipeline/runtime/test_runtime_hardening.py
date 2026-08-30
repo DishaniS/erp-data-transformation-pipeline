@@ -214,6 +214,138 @@ def test_generic_code_does_not_read_the_bpi_vector_variables(monkeypatch):
     assert settings.url is None
 
 
+def test_cloud_qdrant_never_falls_back_to_localhost(monkeypatch):
+    """The defect this guards against.
+
+    The deployment .env used unprefixed ``QDRANT_*`` names while the code reads
+    ``ERP_QDRANT_*``. Nothing matched, so the settings fell through to their own
+    ``localhost:6333`` defaults and vectors were written to a local instance
+    that happened to be listening - silently, with no error anywhere.
+    """
+    monkeypatch.setenv("ERP_QDRANT_URL", "https://cluster.example.test")
+    monkeypatch.delenv("ERP_QDRANT_API_KEY", raising=False)
+
+    settings = QdrantSettings.from_environment()
+
+    assert settings.deployment == "cloud"
+
+    with pytest.raises(ConfigurationError) as failure:
+        settings.validate()
+
+    message = str(failure.value)
+
+    assert "ERP_QDRANT_API_KEY" in message
+    assert "localhost" in message, "the refusal must say what it did NOT do"
+
+
+def test_an_api_key_without_a_url_is_also_refused(monkeypatch):
+    monkeypatch.delenv("ERP_QDRANT_URL", raising=False)
+    monkeypatch.setenv("ERP_QDRANT_API_KEY", "unused-in-this-test")
+
+    with pytest.raises(ConfigurationError) as failure:
+        QdrantSettings.from_environment().validate()
+
+    assert "ERP_QDRANT_URL" in str(failure.value)
+
+
+def test_a_fully_configured_cloud_cluster_validates(monkeypatch):
+    monkeypatch.setenv("ERP_QDRANT_URL", "https://cluster.example.test")
+    monkeypatch.setenv("ERP_QDRANT_API_KEY", "unused-in-this-test")
+
+    settings = QdrantSettings.from_environment()
+    settings.validate()
+
+    assert settings.deployment == "cloud"
+    assert settings.uses_url
+
+
+def test_local_qdrant_requires_no_key_but_must_be_the_absence_of_cloud(monkeypatch):
+    """Local stays available - it is simply never the silent consolation prize."""
+    for name in ("ERP_QDRANT_URL", "ERP_QDRANT_API_KEY", "ERP_QDRANT_MODE"):
+        monkeypatch.delenv(name, raising=False)
+
+    settings = QdrantSettings.from_environment()
+    settings.validate()
+
+    assert settings.deployment == "local"
+    assert settings.host == "localhost"
+
+
+def test_local_mode_can_be_declared_explicitly(monkeypatch):
+    monkeypatch.setenv("ERP_QDRANT_MODE", "local")
+    monkeypatch.setenv("ERP_QDRANT_HOST", "vectors.internal")
+    monkeypatch.delenv("ERP_QDRANT_API_KEY", raising=False)
+    monkeypatch.delenv("ERP_QDRANT_URL", raising=False)
+
+    settings = QdrantSettings.from_environment()
+    settings.validate()
+
+    assert settings.deployment == "local"
+    assert settings.host == "vectors.internal"
+
+
+def test_an_unrecognised_mode_is_refused(monkeypatch):
+    monkeypatch.setenv("ERP_QDRANT_MODE", "cloudy")
+
+    with pytest.raises(ConfigurationError) as failure:
+        QdrantSettings.from_environment().validate()
+
+    assert "ERP_QDRANT_MODE" in str(failure.value)
+
+
+def test_a_disabled_vector_store_is_not_validated(monkeypatch):
+    """Nothing connects, so an incomplete cluster config is not an error."""
+    monkeypatch.setenv("ERP_QDRANT_MODE", "cloud")
+    monkeypatch.setenv("ERP_QDRANT_ENABLED", "false")
+    monkeypatch.delenv("ERP_QDRANT_URL", raising=False)
+
+    QdrantSettings.from_environment().validate()
+
+
+def test_the_api_key_never_appears_in_any_rendering(monkeypatch):
+    secret = "QDRANT_KEY_SENTINEL_40771"
+    monkeypatch.setenv("ERP_QDRANT_URL", "https://cluster.example.test")
+    monkeypatch.setenv("ERP_QDRANT_API_KEY", secret)
+
+    settings = QdrantSettings.from_environment()
+
+    assert secret not in repr(settings)
+    assert secret not in str(settings.describe())
+
+    monkeypatch.delenv("ERP_QDRANT_API_KEY", raising=False)
+
+    with pytest.raises(ConfigurationError) as failure:
+        QdrantSettings.from_environment().validate()
+
+    assert secret not in str(failure.value)
+
+
+def test_the_collection_names_are_unchanged_by_the_cloud_switch(monkeypatch):
+    """The architecture rule: cloud or local, the two collections are the same."""
+    monkeypatch.setenv("ERP_QDRANT_URL", "https://cluster.example.test")
+    monkeypatch.setenv("ERP_QDRANT_API_KEY", "unused-in-this-test")
+
+    settings = QdrantSettings.from_environment()
+
+    assert settings.hot_collection == "erp_vectors_hot"
+    assert settings.warm_collection == "erp_vectors_warm"
+
+
+def test_the_bpi_single_collection_variable_is_still_not_read(monkeypatch):
+    """``QDRANT_COLLECTION`` names a prototype collection and must stay unread.
+
+    It sits in the deployment .env beside the cluster URL, so wiring the URL up
+    without this guard would be one careless alias away from pointing the hot
+    tier at a dataset-specific collection.
+    """
+    monkeypatch.setenv("QDRANT_COLLECTION", "bpi2020_erp_knowledge")
+
+    settings = QdrantSettings.from_environment()
+
+    assert settings.hot_collection == "erp_vectors_hot"
+    assert settings.warm_collection == "erp_vectors_warm"
+
+
 def test_the_qdrant_collection_names_are_configurable(monkeypatch):
     monkeypatch.setenv("ERP_QDRANT_HOT_COLLECTION", "tenant_a_hot")
     monkeypatch.setenv("ERP_QDRANT_WARM_COLLECTION", "tenant_a_warm")

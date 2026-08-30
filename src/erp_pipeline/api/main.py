@@ -21,6 +21,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
 from erp_pipeline.api.config import API_PREFIX, API_TITLE, API_VERSION, ApiSettings
@@ -235,7 +236,85 @@ def create_app(
     ):
         app.include_router(router)
 
+    _describe_api_key_security(app, resolved)
+
     return app
+
+
+#: The name the security scheme is published under. Referenced by every
+#: protected operation, so it is defined once rather than repeated as a literal.
+API_KEY_SCHEME_NAME = "ApiKeyAuth"
+
+
+def _describe_api_key_security(app: FastAPI, resolved: ApiSettings) -> None:
+    """Publish the API-key scheme in the OpenAPI document.
+
+    WHY THIS IS DOCUMENTATION, NOT AUTHENTICATION
+    ---------------------------------------------
+    The middleware remains the only thing that enforces anything. This function
+    adds no dependency, no check and no second code path - it only DESCRIBES
+    what the middleware already does, so Swagger renders an Authorize button
+    and sends the header on protected calls.
+
+    The protected set is computed by calling ``requires_key`` itself rather than
+    by re-listing rules here. A second copy of that logic would eventually
+    disagree with the first, and a document that under-reports protection is
+    how an integrator concludes an endpoint is open when it is not.
+
+    The configured key is never read in this function. Only the header NAME
+    reaches the document.
+    """
+    def custom_openapi() -> dict[str, Any]:
+        if app.openapi_schema:
+            return app.openapi_schema
+
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})[
+            API_KEY_SCHEME_NAME
+        ] = {
+            "type": "apiKey",
+            "in": "header",
+            "name": API_KEY_HEADER,
+            "description": (
+                "Shared service key for trusted server-to-server integration. "
+                "Send it as the "
+                f"`{API_KEY_HEADER}` header. Health and documentation routes "
+                "never require it."
+            ),
+        }
+
+        # Only claim protection the middleware would actually apply. With no
+        # key configured it enforces nothing, and saying otherwise would be a
+        # false statement about a security control.
+        if resolved.auth_enabled:
+            requirement = [{API_KEY_SCHEME_NAME: []}]
+
+            for path, operations in schema.get("paths", {}).items():
+                for method, operation in operations.items():
+                    if method.upper() not in _DOCUMENTED_METHODS:
+                        continue
+
+                    if requires_key(method, path, resolved.protect_reads):
+                        operation["security"] = requirement
+
+        app.openapi_schema = schema
+
+        return schema
+
+    app.openapi = custom_openapi
+
+
+#: HTTP methods that appear as operations in an OpenAPI path item. Anything else
+#: in that mapping (``parameters``, ``summary``) is not an operation.
+_DOCUMENTED_METHODS = frozenset(
+    {"GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"}
+)
 
 
 def build_services(
@@ -287,6 +366,13 @@ def build_services(
         from erp_pipeline.orchestration import InMemoryRepresentationStore
 
         services.representations = InMemoryRepresentationStore()
+
+    if services.lifecycle is None:
+        # The registry is correctness, not an optional optimisation: without it
+        # a replaced document stays searchable alongside its replacement.
+        from erp_pipeline.orchestration import InMemoryLifecycleRegistry
+
+        services.lifecycle = InMemoryLifecycleRegistry()
 
     return services
 
