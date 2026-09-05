@@ -171,7 +171,7 @@ erp-data-transformation-pipeline/
 │       ├── api/               # Shared HTTP client and response types
 │       └── pages/Upload.tsx   # The only screen
 ├── scripts/
-│   ├── run_phase12_benchmark.py   # Storage research benchmark
+│   ├── benchmark_tiered_storage.py   # Storage research benchmark
 │   └── demos/
 │       └── run_bpi2020_demo.py    # Dataset demo, built entirely on erp_pipeline
 ├── src/
@@ -331,7 +331,7 @@ Every component is normalized, and normalization removes `:`, so a canonical id 
 
 ## API Overview
 
-The authoritative generated contract is `artifacts/phase13_openapi.json`. Interactive documentation is available at `/docs` while the API is running.
+The authoritative generated contract is `artifacts/openapi_contract_snapshot.json`. Interactive documentation is available at `/docs` while the API is running.
 
 Authentication below means “required when `ERP_API_KEY` is configured”; without a key the loopback development API is open.
 
@@ -667,7 +667,7 @@ To point the same demonstration at a different event log, copy the configuration
 | `python -m erp_pipeline.runtime.bootstrap` or `erp-bootstrap` | Create/verify the five owned schemas; see bootstrap caveat below |
 | `python -m erp_pipeline.runtime.bootstrap --verify-only` | Report missing owned schemas without creating them |
 | `python -m pytest -q` | Run the backend suite |
-| `python scripts/run_phase12_benchmark.py` | Re-run the storage benchmark against a configured local Qdrant |
+| `python scripts/benchmark_tiered_storage.py` | Re-run the storage benchmark against a configured local Qdrant |
 | `python scripts/demos/run_bpi2020_demo.py` | Run the BPI Challenge 2020 dataset through the generic framework |
 
 ### Frontend
@@ -686,7 +686,7 @@ There is no configured frontend lint command and no separate Python lint/type-ch
 
 No Dockerfile or Compose file exists. Local services must be installed/run separately or supplied by the developer. The API defaults to loopback, CORS defaults closed, uploads default to `var/uploads`, and cold archives default to `var/cold-archive`.
 
-The measured Phase 12 research evidence is stored in `artifacts/phase12_storage_benchmark.json`. It distinguishes measured latency/archive bytes from proxy storage calculations and experimental cost multipliers; it does not claim production-scale performance or monetary savings.
+The measured Phase 12 research evidence is stored in `artifacts/tiered_storage_benchmark.json`. It distinguishes measured latency/archive bytes from proxy storage calculations and experimental cost multipliers; it does not claim production-scale performance or monetary savings.
 
 ## External Services
 
@@ -788,8 +788,8 @@ Repository verification performed while preparing this README:
 | `src/erp_pipeline/schemas/canonical_models.py` | Canonical record/document contract |
 | `src/erp_pipeline/catalog/schema.py` | Catalog PostgreSQL schema |
 | `src/erp_pipeline/storage/storage_policy.py` | Versioned tier constraints, scoring, and hysteresis |
-| `artifacts/phase13_openapi.json` | Generated REST contract |
-| `artifacts/phase12_storage_benchmark.json` | Measured/proxy storage evidence |
+| `artifacts/openapi_contract_snapshot.json` | Generated REST contract |
+| `artifacts/tiered_storage_benchmark.json` | Measured/proxy storage evidence |
 | `frontend/src/api/client.ts` | Browser-to-API boundary |
 | `frontend/src/pages/Upload.tsx` | Complete current UI workflow |
 | `src/erp_pipeline/schemas/identity.py` | Deterministic identity rules and the surrogate-key refusal |
@@ -798,8 +798,8 @@ Repository verification performed while preparing this README:
 | `src/erp_pipeline/response_adaptation/relevance.py` | Deterministic, explainable query-to-field relevance scoring |
 | `src/erp_pipeline/response_adaptation/service.py` | Response adaptation entry point |
 | `src/erp_pipeline/api/routers_adaptation.py` | `POST /v1/responses/adapt` |
-| `artifacts/phase14_response_adaptation_evaluation.json` | Measured response-adaptation evidence |
-| `docs/phase14_adaptive_response_transformation.md` | Phase 14 design and results |
+| `artifacts/response_adaptation_evaluation.json` | Measured response-adaptation evidence |
+| `docs/adaptive_response_transformation.md` | Phase 14 design and results |
 | `examples/bpi2020/event_log_config.json` | The only BPI-specific knowledge in the repository |
 | `scripts/demos/run_bpi2020_demo.py` | Dataset demonstration over the generic framework |
 | `docs/architecture/ARCHITECTURE_CONSOLIDATION_REPORT.md` | How the former `bpi2020`/`erp_integrations` packages were folded in |

@@ -283,7 +283,7 @@ that exists is more useful than a 404 that hides it. The response carries no
 ## 25. Files changed
 
 **New (5):** `orchestration/lifecycle.py`, `orchestration/scheduler.py`,
-`scripts/evaluate_phase9_sync_freshness.py`, two test files, this report.
+`scripts/evaluate_sync_freshness.py`, two test files, this report.
 
 **Modified (7):** `orchestration/models.py` (stage + counters),
 `orchestration/planner.py` (stage in all five tails),
@@ -331,7 +331,7 @@ processing  median 0.9 ms   p95 1.5 ms   max 2.0 ms
 GATES: PASS
 ```
 
-Artifact: `artifacts/phase9_sync_freshness_evaluation.json`.
+Artifact: `artifacts/sync_freshness_evaluation.json`.
 
 ### A measurement I had to correct
 
@@ -378,7 +378,7 @@ unaffected by the scheduling work.
 ## 30. Existing artifact impact
 
 All eight prior artifacts unchanged. Only
-`phase9_sync_freshness_evaluation.json` was created. No previous evaluation
+`sync_freshness_evaluation.json` was created. No previous evaluation
 corpus was altered.
 
 ## 31. Known limitations
@@ -435,5 +435,5 @@ Member 4 Qdrant index   synchronised AI retrieval corpus, freshness bounded by
 
 ---
 
-*See also: [Phase 8 — Remote Asset Ingestion](phase8_remote_asset_ingestion.md),
-[Phase 7 — Schema Vector Retrieval](phase7_schema_vector_retrieval.md).*
+*See also: [Phase 8 — Remote Asset Ingestion](remote_asset_ingestion.md),
+[Phase 7 — Schema Vector Retrieval](schema_vector_retrieval.md).*

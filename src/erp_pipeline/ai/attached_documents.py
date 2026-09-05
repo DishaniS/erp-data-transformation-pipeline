@@ -70,9 +70,20 @@ class DocumentAttachment:
     #: ``employee_id`` is not a canonical record id, and manufacturing one here
     #: would put a fabricated reference into a field consumers resolve.
     parent_record_id: str | None = None
-    source_system_id: str = "unknown_source"
-    source_entity: str = "unknown_entity"
-    source_field: str = "unknown_field"
+    #: Where this document provably came from, when that is KNOWN.
+    #:
+    #: ``None`` - never a stand-in like "unknown_source" or "uploaded". These
+    #: three fields are two thirds of the canonical identity triple
+    #: (``source_system_id`` + ``source_entity`` + ``record_key``) and are
+    #: filterable Qdrant payload keys. A placeholder here is indistinguishable
+    #: from a real source system of that name: a caller filtering on it would
+    #: get every document whose origin was merely UNSTATED, and two unrelated
+    #: uploads would share a synthetic identity. Absent is the honest answer,
+    #: and ``to_metadata`` omits the key entirely - exactly as it already does
+    #: for ``parent_record_id``.
+    source_system_id: str | None = None
+    source_entity: str | None = None
+    source_field: str | None = None
     document_id: str = ""
     #: What makes this attachment distinct from another attachment of the same
     #: document, when there is no parent record to do it.
@@ -102,26 +113,38 @@ class DocumentAttachment:
         return self.attachment_scope or self.parent_record_id or self.document_id
 
     def attachment_key(self, chunk_id: str) -> str:
-        """The identity that keeps two ERP attachments of one document apart."""
+        """The identity that keeps two ERP attachments of one document apart.
+
+        ``source_field`` participates because one ERP row can carry the same
+        bytes in two columns. It is coerced to "" when absent: this is an
+        opaque internal discriminator, not a payload field, so an empty
+        segment states nothing about the document - unlike the payload, where
+        a stand-in would be read as a business fact.
+        """
         return ATTACHMENT_SEPARATOR.join(
-            (self.scope, self.source_field, chunk_id)
+            (self.scope, self.source_field or "", chunk_id)
         )
 
     def to_metadata(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "content_kind": CONTENT_KIND_DOCUMENT_CHUNK,
-            "source_system_id": self.source_system_id,
-            "source_entity": self.source_entity,
-            "source_field": self.source_field,
             "document_id": self.document_id,
-            "document_type": self.document_type or self.source_field,
             "filter_attributes": dict(self.filter_attributes),
         }
 
         for key, value in (
-            # Absent, not null, when no parent was declared - so a Phase 4
-            # filter on parent_record_id correctly excludes this document
-            # rather than matching an empty value.
+            # Absent, not null, when the caller declared nothing - so a Phase 4
+            # filter on any of these correctly EXCLUDES this document rather
+            # than matching a placeholder that was never a real ERP value.
+            ("source_system_id", self.source_system_id),
+            ("source_entity", self.source_entity),
+            ("source_field", self.source_field),
+            # For a database BLOB the ERP column name IS what the business
+            # calls the document, so it stands in when no explicit type was
+            # given. That is real ERP context, not a guess. When neither
+            # exists - an upload that declared no type - the key is omitted
+            # rather than invented.
+            ("document_type", self.document_type or self.source_field),
             ("parent_record_id", self.parent_record_id),
             ("record_key", self.business_key_value),
             ("business_key_name", self.business_key_name),

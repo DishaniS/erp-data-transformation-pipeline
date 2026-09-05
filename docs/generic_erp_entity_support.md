@@ -276,7 +276,7 @@ POST /v1/jobs
 | `src/erp_pipeline/transformation/source_native.py` | The transformer, identity resolution, binary guard |
 | `tests/erp_pipeline/transformation/test_source_native.py` | 27 tests |
 | `tests/erp_pipeline/api/test_source_native_pipeline.py` | 16 tests |
-| `docs/phase2_generic_erp_entity_support.md` | This report |
+| `docs/generic_erp_entity_support.md` | This report |
 
 ### Changed — all additive
 

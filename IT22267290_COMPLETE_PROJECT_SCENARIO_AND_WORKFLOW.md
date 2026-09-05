@@ -659,7 +659,7 @@ margin — *"Without it, 0.501 vs 0.499 would trigger a physical data movement."
 | Long-term archival vector → COLD | dormancy saturated, no constraint blocks COLD | **POLICY EXAMPLE** |
 
 **These are policy examples, not measured runtime behaviour.** What *is*
-measured is in `artifacts/phase12_storage_benchmark.json` (Part 39): latency,
+measured is in `artifacts/tiered_storage_benchmark.json` (Part 39): latency,
 recall, cold archive bytes, quantization verification and rehydration fidelity
 over a 500-record corpus.
 
@@ -1349,8 +1349,8 @@ allow-listed out. `test_the_endpoint_never_echoes_an_authorization_header` and
 
 # PART 19 — PHASE 14 MEASUREMENTS
 
-Source: `artifacts/phase14_response_adaptation_evaluation.json`, produced by
-`scripts/run_phase14_response_adaptation_evaluation.py`. **Values below are
+Source: `artifacts/response_adaptation_evaluation.json`, produced by
+`scripts/evaluate_response_adaptation.py`. **Values below are
 copied exactly from the artifact — no rounding was applied.**
 
 ## Dataset
@@ -1506,7 +1506,7 @@ entries* that only this dataset motivates — which is exactly the distinction.
 
 **Three named, classified limitations make the evaluation more credible than a
 tuned 1.0.** Recorded in the artifact, in
-`docs/architecture/PHASE14_IMPLEMENTATION_REPORT.md` §20, and in the project's
+`docs/architecture/RESPONSE_ADAPTATION_IMPLEMENTATION_REPORT.md` §20, and in the project's
 persistent memory so a future session does not silently "fix" them.
 
 ---
@@ -1998,7 +1998,7 @@ COLD is **not searchable in place**. `POST /v1/search` with
 **Off by default** — `SearchRequest.include_cold = False`, *"cold search
 rehydrates archives and is expensive"*.
 
-### Measured rehydration cost (from `artifacts/phase12_storage_benchmark.json`)
+### Measured rehydration cost (from `artifacts/tiered_storage_benchmark.json`)
 
 | Measurement | Value |
 |---|---|
@@ -2213,7 +2213,7 @@ What Member 2 can obtain to build MCP tool definitions:
 > `source_entity`/`target_entity`; the real `SourceRelationship` contract uses
 > `from_entity`/`to_entity`/`from_fields`/`to_fields`/`confidence`. Member 2
 > should code against the **generated OpenAPI**
-> (`artifacts/phase13_openapi.json`), which is regenerated from the live
+> (`artifacts/openapi_contract_snapshot.json`), which is regenerated from the live
 > application by a contract test.
 
 ## B. Runtime response integration
@@ -2345,7 +2345,7 @@ explicitly states: *"No LLM and no generated answer."*
 
 | Demonstration | Command |
 |---|---|
-| **Phase 14 response adaptation (the research contribution)** | `.venv/Scripts/python.exe scripts/run_phase14_response_adaptation_evaluation.py` |
+| **Phase 14 response adaptation (the research contribution)** | `.venv/Scripts/python.exe scripts/evaluate_response_adaptation.py` |
 | **Phase 14 targeted test suite (106 tests)** | `.venv/Scripts/python.exe -m pytest tests/erp_pipeline/response_adaptation/ -q` |
 | **Mapping benchmark (measured research result)** | `.venv/Scripts/python.exe -m pytest tests/erp_pipeline/mapping/test_mapping_benchmark.py -k reported -s` |
 | **Adapt one response in Python** | see snippet below |
@@ -2379,7 +2379,7 @@ print(json.dumps(r.transformation.to_dict(), indent=2))
 | **Schema bootstrap** | PostgreSQL | `.venv/Scripts/python.exe -m erp_pipeline.runtime.bootstrap` |
 | **Database discovery** | PostgreSQL/MySQL/MongoDB | `POST /v1/sources` → `POST /v1/sources/{id}/discover` |
 | **Semantic search** | Qdrant + PostgreSQL | `POST /v1/search` |
-| **Phase 12 storage benchmark** | Qdrant | `.venv/Scripts/python.exe scripts/run_phase12_benchmark.py` |
+| **Phase 12 storage benchmark** | Qdrant | `.venv/Scripts/python.exe scripts/benchmark_tiered_storage.py` |
 | **Full test suite** | optional (skips gracefully) | `.venv/Scripts/python.exe -m pytest -q` |
 
 > In this environment, MongoDB (`localhost:27018`) and Qdrant (`localhost:6333`)
@@ -2466,7 +2466,7 @@ needs nothing.
 ## If asked "show me the research result"
 
 ```bash
-.venv/Scripts/python.exe scripts/run_phase14_response_adaptation_evaluation.py
+.venv/Scripts/python.exe scripts/evaluate_response_adaptation.py
 ```
 
 Then say the honest headline out loud before they read it:
@@ -2540,7 +2540,7 @@ scoring**, then six weighted factors per tier, then hysteresis — with a full
 scoring **cannot** overturn; every transition carries a stable reason code; and
 the weights are declared experimental assumptions rather than tuned results.
 
-**Evidence.** `artifacts/phase12_storage_benchmark.json` over 500 real
+**Evidence.** `artifacts/tiered_storage_benchmark.json` over 500 real
 384-d vectors: measured latency for all three tiers, identical recall across
 tiers (`0.15/0.475/0.55` at k=1/3/5), **lossless** cold round-trip (max
 deviation `0.0`), server-verified int8 quantization, measured cold archive bytes.
@@ -2585,7 +2585,7 @@ on a self-authored corpus must be presented as *"the engine is consistent with
 the vocabulary and refusals we declared"*, not as a generalisation claim — which
 is precisely why the alias-independent subset is reported separately.
 
-## Storage — MEASURED (`artifacts/phase12_storage_benchmark.json`)
+## Storage — MEASURED (`artifacts/tiered_storage_benchmark.json`)
 
 Corpus: **500 records**, 40 queries, 384-d, `all-MiniLM-L6-v2` (5.6.1), real
 model output, identical corpus in every tier, `llm_calls: 0`.
@@ -2748,7 +2748,7 @@ Ablation: with relevance **0.9799 / 0.5004**; without **1.0 / 0.1673**.
 | Transformation | **COMPLETE** | `transformation/`, 15 `IssueCode`s, `Decimal` money | Yes — done |
 | Identity system | **COMPLETE** | `schemas/identity.py`, surrogate-key refusal | Yes — done |
 | AI representation + embedding | **COMPLETE** | `ai/`, 384-d local model, skip-if-unchanged | Yes — done |
-| Tiered storage | **COMPLETE** | `storage/`, `artifacts/phase12_storage_benchmark.json` | Yes — done |
+| Tiered storage | **COMPLETE** | `storage/`, `artifacts/tiered_storage_benchmark.json` | Yes — done |
 | Search | **BACKEND COMPLETE** | `POST /v1/search`, filters refused not ignored | Yes — done |
 | Record resolution | **BACKEND COMPLETE** | `GET /v1/records/{id}`, canonical id carried forward | Yes — done |
 | Incremental sync | **BACKEND COMPLETE** | `sync/`, checkpoint never passes a failure | Yes — done |
@@ -2758,7 +2758,7 @@ Ablation: with relevance **0.9799 / 0.5004**; without **1.0 / 0.1673**.
 | **Response adaptation** | **COMPLETE** | `response_adaptation/`, 106 tests, `artifacts/phase14_*.json` | **Yes — done** |
 | Image/PDF adaptation | **COMPLETE** | `assets.py`; degrades safely on corrupt input | Yes — done |
 | SSRF controls | **COMPLETE** | 14 controls, off by default, 15 refusal cases tested | Yes — done |
-| REST control plane | **COMPLETE** | 23 operations, `artifacts/phase13_openapi.json` | Yes — done |
+| REST control plane | **COMPLETE** | 23 operations, `artifacts/openapi_contract_snapshot.json` | Yes — done |
 | Frontend | **PARTIAL — UPLOAD ONLY** | One page, two endpoints, no API-key support | Declare honestly |
 | Member 1 integration | **EXTERNAL INTEGRATION REQUIRED** | No governance code here | Contract only |
 | Member 2 integration | **EXTERNAL INTEGRATION REQUIRED** | `POST /v1/responses/adapt` is ready and tested; the caller does not exist here | Contract + endpoint ready |
@@ -2886,7 +2886,7 @@ it rather than assume it.
 *Technical:* Keeping every vector in RAM at float32 is the most expensive
 possible choice. The measured proxy shows WARM at 0.1 and COLD at 0.05 of HOT's
 normalized cost, with **identical recall** across tiers on our corpus.
-*Evidence:* `artifacts/phase12_storage_benchmark.json` → `cost.relative_to_hot`, `recall`.
+*Evidence:* `artifacts/tiered_storage_benchmark.json` → `cost.relative_to_hot`, `recall`.
 
 **6. Why not just send the raw ERP response to the LLM?**
 *Short:* Because it wastes context on plumbing and is untraceable.
@@ -2894,7 +2894,7 @@ normalized cost, with **identical recall** across tiers on our corpus.
 across 68 cases; adaptation halves the bytes and removes 61% of labelled noise
 while preserving 98% of relevant fields — and produces a field-by-field record
 of what was removed and why.
-*Evidence:* `artifacts/phase14_response_adaptation_evaluation.json`.
+*Evidence:* `artifacts/response_adaptation_evaluation.json`.
 
 **7. Why is RAW recall 1.0?**
 *Short:* Because it keeps everything, so it can never drop a relevant field.
@@ -3065,7 +3065,7 @@ rejected `INV-001`.
 *Technical:* Multipliers are **normalized units, not currency**. The artifact's
 `claim_safety` block separates measured from proxy from estimated, and
 explicitly does **not claim** monetary savings or production-scale performance.
-*Evidence:* `artifacts/phase12_storage_benchmark.json` → `cost.model.assumptions`, `claim_safety`.
+*Evidence:* `artifacts/tiered_storage_benchmark.json` → `cost.model.assumptions`, `claim_safety`.
 
 **30. What is the single strongest contribution?**
 *Short:* Reusing the ERP mapping vocabulary as a query-understanding resource.
@@ -3446,7 +3446,7 @@ flowchart TD
 | Tier state | `storage/state.py` | 3 tables in `erp_vector_storage` | `test_live_postgres_state.py` |
 | Search filters | `storage/filters.py` | `SearchFilters`, `FILTERABLE_FIELDS` | `test_search_filters.py` |
 | Migration | `storage/migration.py` | policy re-check before moving | `tests/erp_pipeline/storage/` |
-| **Storage benchmark** | `storage/benchmark.py` | `write_artifact` | `scripts/run_phase12_benchmark.py` |
+| **Storage benchmark** | `storage/benchmark.py` | `write_artifact` | `scripts/benchmark_tiered_storage.py` |
 | Sync state | `sync/state.py` | `PostgresSyncStateStore`, `erp_sync.sync_state` | `tests/erp_pipeline/sync/` |
 | **Checkpointing** | `sync/coordinator.py` | `SyncCoordinator.run` (never passes a failure) | same |
 | Drift | `sync/drift.py` | `detect_drift`, `findings_from_diff`, `DriftSeverity` | same |
@@ -3460,7 +3460,7 @@ flowchart TD
 | **Budgets** | `response_adaptation/formatter.py` | `build_payload`, `apply_budget_to_decisions` | same |
 | **Assets + SSRF** | `response_adaptation/assets.py` | `AssetAdapter`, `validate_asset_url`, `UrlSafetyPolicy` | `test_assets_and_url_safety.py` |
 | **Adaptation service** | `response_adaptation/service.py` | `ResponseAdaptationService.adapt`, `_allowed_headers` | `test_service_and_api.py` |
-| **Phase 14 evaluation** | `response_adaptation/evaluation.py` | `build_cases`, `evaluate`, `run_ablation`, `field_present` | `scripts/run_phase14_response_adaptation_evaluation.py` |
+| **Phase 14 evaluation** | `response_adaptation/evaluation.py` | `build_cases`, `evaluate`, `run_ablation`, `field_present` | `scripts/evaluate_response_adaptation.py` |
 | Job planning | `orchestration/planner.py` | `PipelinePlanner`, `JobType`, stage tuples | `tests/erp_pipeline/orchestration/` |
 | Job store | `orchestration/job_store.py` | `erp_orchestration.jobs`, `job_stages` | same |
 | Record store | `orchestration/record_store.py` | `erp_runtime.canonical_records` | `GET /v1/records/{id}` |
@@ -3539,10 +3539,10 @@ integrations themselves are not.
 
 | Artifact | Contents |
 |---|---|
-| `artifacts/phase14_response_adaptation_evaluation.json` | 68 cases, 3 methods, per-category, per-case, ablation, named limitations |
-| `artifacts/phase12_storage_benchmark.json` | 500 vectors, latency/recall/footprint/cost with an explicit `claim_safety` block |
+| `artifacts/response_adaptation_evaluation.json` | 68 cases, 3 methods, per-category, per-case, ablation, named limitations |
+| `artifacts/tiered_storage_benchmark.json` | 500 vectors, latency/recall/footprint/cost with an explicit `claim_safety` block |
 | `tests/erp_pipeline/mapping/test_mapping_benchmark.py` | 68 hand labels (60 positive, 8 negative), reproducible on demand |
-| `artifacts/phase13_openapi.json` | 23-operation generated contract, regenerated by a test |
+| `artifacts/openapi_contract_snapshot.json` | 23-operation generated contract, regenerated by a test |
 
 ### What should be demonstrated
 

@@ -109,9 +109,9 @@ pipeline already had and already tests heavily.
 |---|---|
 | `src/erp_pipeline/api/routers_adaptation.py` | `POST /v1/responses/adapt` |
 | `tests/erp_pipeline/response_adaptation/` (4 files) | 106 tests |
-| `scripts/run_phase14_response_adaptation_evaluation.py` | Evaluation runner |
-| `artifacts/phase14_response_adaptation_evaluation.json` | Measured evidence |
-| `docs/phase14_adaptive_response_transformation.md` | Design document |
+| `scripts/evaluate_response_adaptation.py` | Evaluation runner |
+| `artifacts/response_adaptation_evaluation.json` | Measured evidence |
+| `docs/adaptive_response_transformation.md` | Design document |
 
 ### Changed
 
@@ -743,7 +743,7 @@ X-API-Key: <key>
 Full suite: **2943 passed, 63 skipped, 0 failed, 0 errors.** Phase 14 targeted
 suite: **106 passed, 0 skipped.** Details and the skip-delta explanation in §12.
 
-The Phase 13 OpenAPI artifact (`artifacts/phase13_openapi.json`) is regenerated
+The Phase 13 OpenAPI artifact (`artifacts/openapi_contract_snapshot.json`) is regenerated
 from the live application by an existing contract test, so it now contains
 `/v1/responses/adapt` and the `adaptResponse` operation. That test also enforces
 operation-id uniqueness and asserts the artifact carries no planted secrets; both

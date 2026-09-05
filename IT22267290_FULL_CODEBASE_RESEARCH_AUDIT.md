@@ -125,7 +125,7 @@ A rigorous, file-by-file automated scan was performed across the repository:
 | **Frontend Implementation** | React 18, TypeScript, Vite 5, Vitest | `frontend/src/` (Upload UI, API client, security validation) |
 | **Empirical Evaluation Scripts** | 5 production benchmark suites | `scripts/` (Phase 3 Multimodal, Phase 4 Identity, Phase 12 Storage, Phase 14 Response Adaptation, BPI Demo) |
 | **Architectural Documentation** | 22 comprehensive `.md` files (10,400+ LoC) | `docs/` and `docs/architecture/` |
-| **Published REST Endpoints** | 22 fully typed `/v1` routes | `src/erp_pipeline/api/` & `artifacts/phase13_openapi.json` |
+| **Published REST Endpoints** | 22 fully typed `/v1` routes | `src/erp_pipeline/api/` & `artifacts/openapi_contract_snapshot.json` |
 
 ---
 
@@ -189,21 +189,21 @@ erp-data-transformation-pipeline/
 │   ├── explainable_mapping_engine.md          # 5-tier scoring algorithm specifications
 │   ├── hybrid_tiered_vector_storage.md        # Mathematical cost models & storage tiering architecture
 │   ├── incremental_sync_and_schema_drift.md   # Schema drift detection algorithms
-│   ├── phase14_adaptive_response_transformation.md # LLM response adaptation algorithms
+│   ├── adaptive_response_transformation.md # LLM response adaptation algorithms
 │   └── architecture/                          # Architecture consolidation & stabilization reports
 │
 ├── artifacts/                                 # Evaluation & Benchmark Outputs
-│   ├── phase12_storage_benchmark.json         # Hot vs Warm vs Cold footprint & cost evaluation
-│   ├── phase13_openapi.json                   # Complete generated OpenAPI 3.1 REST API specification
-│   ├── phase14_response_adaptation_evaluation.json # F1-macro & token reduction evaluation
-│   ├── phase3_multimodal_evaluation.json      # Binary asset extraction & OCR association benchmark
-│   └── phase4_identity_retrieval_evaluation.json   # Identity resolution & filter precision benchmark
+│   ├── tiered_storage_benchmark.json         # Hot vs Warm vs Cold footprint & cost evaluation
+│   ├── openapi_contract_snapshot.json                   # Complete generated OpenAPI 3.1 REST API specification
+│   ├── response_adaptation_evaluation.json # F1-macro & token reduction evaluation
+│   ├── multimodal_extraction_evaluation.json      # Binary asset extraction & OCR association benchmark
+│   └── identity_retrieval_evaluation.json   # Identity resolution & filter precision benchmark
 │
 ├── scripts/                                   # Evaluation Runners & Demonstrations
-│   ├── evaluate_phase3_multimodal.py          # Multimodal evaluation runner
-│   ├── evaluate_phase4_identity_retrieval.py  # Filtered identity retrieval benchmark runner
-│   ├── run_phase12_benchmark.py               # Hybrid storage tiering benchmark runner
-│   ├── run_phase14_response_adaptation_evaluation.py # LLM response adaptation benchmark runner
+│   ├── evaluate_multimodal_extraction.py          # Multimodal evaluation runner
+│   ├── evaluate_identity_retrieval.py  # Filtered identity retrieval benchmark runner
+│   ├── benchmark_tiered_storage.py               # Hybrid storage tiering benchmark runner
+│   ├── evaluate_response_adaptation.py # LLM response adaptation benchmark runner
 │   └── demos/run_bpi2020_demo.py              # End-to-end BPI 2020 dataset execution demonstration
 │
 └── data/                                      # Demonstration Datasets (Gitignored inputs)
@@ -266,7 +266,7 @@ The system provides multiple programmatic, CLI, API, and worker entry points:
 ### 5.1 Main Execution Paths
 1. **REST API Server (`erp-api`):** Configured in `pyproject.toml:[project.scripts]`. Invokes `src/erp_pipeline/runtime/application.py:run()`, loads environment settings, initializes shared database connection pools and Qdrant clients, constructs the FastAPI app, and starts Uvicorn on port 8000.
 2. **Database Bootstrap (`erp-bootstrap`):** Invokes `src/erp_pipeline/runtime/bootstrap.py:main()`, applying additive SQL DDL migrations across 5 schemas (`erp_catalog`, `erp_canonical`, `erp_storage`, `erp_sync`, `erp_runtime`).
-3. **Evaluation Benchmarks:** Standalone Python scripts in `scripts/` (e.g. `scripts/run_phase12_benchmark.py`, `scripts/run_phase14_response_adaptation_evaluation.py`) designed to empirically validate research claims without web server overhead.
+3. **Evaluation Benchmarks:** Standalone Python scripts in `scripts/` (e.g. `scripts/benchmark_tiered_storage.py`, `scripts/evaluate_response_adaptation.py`) designed to empirically validate research claims without web server overhead.
 4. **React Ingestion Frontend:** Hosted via `npm run dev` in `frontend/`, providing a web interface for manual file and API specification uploads.
 
 ---
@@ -480,7 +480,7 @@ Implemented in `src/erp_pipeline/storage/`:
 
 ### 18.2 TAF Novelty Verification
 * **Claim:** *Cost-Efficient Secure Hybrid Tiered Vector Storage Architecture.*
-* **Status:** **FULLY IMPLEMENTED & EMPIRICALLY BENCHMARKED** in `artifacts/phase12_storage_benchmark.json`.
+* **Status:** **FULLY IMPLEMENTED & EMPIRICALLY BENCHMARKED** in `artifacts/tiered_storage_benchmark.json`.
 
 ---
 
@@ -669,7 +669,7 @@ flowchart TD
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **A. Data Extraction & Preparation** | Extract tables, master records, logs, clean & normalize | Connectors for Postgres, MySQL, SQLServer, Mongo; CSV/PDF parsers; Rule engine; ISO/Decimal converters | `connectors/`, `discovery/`, `ingestion/`, `transformation/` | **COMPLETE** | None. Fully verified with 5 source types. |
 | **B. Semantic Embedding Generation** | Convert records and policy docs to vector embeddings | Deterministic `AIRepresentationBuilder`, `all-MiniLM-L6-v2` 384d embeddings, caching | `ai/representation.py`, `ai/embedding.py`, `ai/service.py` | **COMPLETE** | None. Local offline model verified. |
-| **C. Cost-Efficient Storage (TAF Novelty)** | Hybrid tiered vector storage balancing cost, speed, sensitivity | Hot (Qdrant), Warm (Quantized Qdrant), Cold (AES-256-GCM disk); Dynamic VectorRouter | `storage/hybrid_store.py`, `storage/vector_router.py`, `storage/cold_tier.py` | **COMPLETE** | None. Benchmarked in `phase12_storage_benchmark.json`. |
+| **C. Cost-Efficient Storage (TAF Novelty)** | Hybrid tiered vector storage balancing cost, speed, sensitivity | Hot (Qdrant), Warm (Quantized Qdrant), Cold (AES-256-GCM disk); Dynamic VectorRouter | `storage/hybrid_store.py`, `storage/vector_router.py`, `storage/cold_tier.py` | **COMPLETE** | None. Benchmarked in `tiered_storage_benchmark.json`. |
 | **D. Group Integration Support** | Provide APIs and schemas for Members 1, 2, and 3 | 22 REST endpoints; Schema catalog; Filtered search; Phase 14 response adaptation | `api/routers.py`, `api/routers_data.py`, `api/routers_adaptation.py` | **STRONG** | Live integration tests with other members actual services once deployed. |
 
 ---
@@ -702,10 +702,10 @@ flowchart TD
 
 | Benchmark Suite | Script Location | Measured Parameters | Output Artifact |
 | :--- | :--- | :--- | :--- |
-| **Phase 12 Storage Benchmark** | `scripts/run_phase12_benchmark.py` | Vector component bytes, Cold archive disk size, Qdrant RAM footprint, embedding latency. | `artifacts/phase12_storage_benchmark.json` |
-| **Phase 14 Response Adaptation** | `scripts/run_phase14_response_adaptation_evaluation.py` | Precision, Recall, F1-macro against labeled field sets, token reduction percentage. | `artifacts/phase14_response_adaptation_evaluation.json` |
-| **Phase 3 Multimodal Benchmark** | `scripts/evaluate_phase3_multimodal.py` | Binary BLOB extraction accuracy, OCR text association integrity, binary safety. | `artifacts/phase3_multimodal_evaluation.json` |
-| **Phase 4 Identity Retrieval** | `scripts/evaluate_phase4_identity_retrieval.py` | Identity match accuracy, filter precision, Hot/Warm retrieval parity, latency. | `artifacts/phase4_identity_retrieval_evaluation.json` |
+| **Phase 12 Storage Benchmark** | `scripts/benchmark_tiered_storage.py` | Vector component bytes, Cold archive disk size, Qdrant RAM footprint, embedding latency. | `artifacts/tiered_storage_benchmark.json` |
+| **Phase 14 Response Adaptation** | `scripts/evaluate_response_adaptation.py` | Precision, Recall, F1-macro against labeled field sets, token reduction percentage. | `artifacts/response_adaptation_evaluation.json` |
+| **Phase 3 Multimodal Benchmark** | `scripts/evaluate_multimodal_extraction.py` | Binary BLOB extraction accuracy, OCR text association integrity, binary safety. | `artifacts/multimodal_extraction_evaluation.json` |
+| **Phase 4 Identity Retrieval** | `scripts/evaluate_identity_retrieval.py` | Identity match accuracy, filter precision, Hot/Warm retrieval parity, latency. | `artifacts/identity_retrieval_evaluation.json` |
 | **BPI 2020 Dataset Demo** | `scripts/demos/run_bpi2020_demo.py` | End-to-end extraction, case building, embedding generation, and Qdrant ingestion. | Execution logs |
 
 ---
@@ -801,7 +801,7 @@ flowchart TD
 # 37. DOCUMENTATION AUDIT
 
 * **Documentation Quality:** Exceptional. 22 markdown documents in `docs/` provide deep mathematical, architectural, and operational explanations matching the current implementation.
-* **OpenAPI Specifications:** Generated automatically in `artifacts/phase13_openapi.json` (93KB, 22 routes).
+* **OpenAPI Specifications:** Generated automatically in `artifacts/openapi_contract_snapshot.json` (93KB, 22 routes).
 
 ---
 
@@ -855,7 +855,7 @@ flowchart TD
 - [x] Automated ERP schema discovery & JSON export (`GET /v1/schemas/{id}`)
 - [x] Phase 14 Adaptive ERP API response transformer (`POST /v1/adapt/response`)
 - [x] Process case and state transition graph extractor
-- [x] Published OpenAPI 3.1 specification (`artifacts/phase13_openapi.json`)
+- [x] Published OpenAPI 3.1 specification (`artifacts/openapi_contract_snapshot.json`)
 - [ ] Docker Compose orchestration bundle combining Member 1, 2, 3, and 4 services.
 
 ---

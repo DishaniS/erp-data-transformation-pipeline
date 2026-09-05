@@ -5,8 +5,8 @@ measurements rather than assertions. Phase 11 produces vectors; Phase 12 places
 them in HOT, WARM or COLD, moves them when the evidence changes, and can explain
 every placement.
 
-All numbers below come from `artifacts/phase12_storage_benchmark.json`, produced
-by `scripts/run_phase12_benchmark.py` against a live Qdrant with 500 real
+All numbers below come from `artifacts/tiered_storage_benchmark.json`, produced
+by `scripts/benchmark_tiered_storage.py` against a live Qdrant with 500 real
 MiniLM embeddings.
 
 ---
@@ -342,7 +342,7 @@ documentation legitimately names the things the code must not contain.
 ## 9. Reproducing
 
 ```bash
-python scripts/run_phase12_benchmark.py
+python scripts/benchmark_tiered_storage.py
 ```
 
 Creates its own collections prefixed `erp_phase12_bench_` and deletes them

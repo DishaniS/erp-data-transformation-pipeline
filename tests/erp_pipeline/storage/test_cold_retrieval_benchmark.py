@@ -6,7 +6,7 @@ distance metric and the query. Those are different properties, so COLD gets a
 measured Recall@k rather than an inferred one.
 
 The corpus here is small so the suite stays fast; the full 500-vector, 40-query
-evaluation lives in `scripts/run_phase12_benchmark.py` and its artifact is
+evaluation lives in `scripts/benchmark_tiered_storage.py` and its artifact is
 checked for completeness at the bottom of this file.
 """
 
@@ -35,7 +35,7 @@ from erp_pipeline.storage.models import StorageTier
 from .conftest import TEST_COLLECTION_PREFIX, make_embedding, make_vector
 
 ARTIFACT = (
-    Path(__file__).resolve().parents[3] / "artifacts" / "phase12_storage_benchmark.json"
+    Path(__file__).resolve().parents[3] / "artifacts" / "tiered_storage_benchmark.json"
 )
 
 DIMENSION = 16

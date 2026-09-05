@@ -9,7 +9,7 @@ Also measures the thing a user actually feels — how long from "upload accepted
 to "this document is searchable".
 
 Run:
-    python scripts/evaluate_phase6_automatic_indexing.py
+    python scripts/evaluate_automatic_document_indexing.py
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ from tests.erp_pipeline.api.test_search_resolution_and_filters import (
     PatchedStorage,
 )
 
-ARTIFACT = ROOT / "artifacts" / "phase6_automatic_document_indexing_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "automatic_document_indexing_evaluation.json"
 
 
 def _pdf(lines: list[str]) -> bytes:

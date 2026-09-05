@@ -92,7 +92,7 @@ examples/
     └── event_log_config.json      the ONLY BPI-specific knowledge in the repository
 
 scripts/
-├── run_phase12_benchmark.py       storage research benchmark (unchanged)
+├── benchmark_tiered_storage.py       storage research benchmark (unchanged)
 └── demos/
     └── run_bpi2020_demo.py        dataset demonstration, built entirely on erp_pipeline
 
@@ -330,7 +330,7 @@ That last line is the demo behaving correctly: it reports the environment's real
 
 ### Preserved (Phase 19)
 
-`IT22267290_FULL_CODEBASE_RESEARCH_AUDIT.md`, `artifacts/phase12_storage_benchmark.json`, `artifacts/phase13_openapi.json`, `scripts/run_phase12_benchmark.py`, all of `docs/`, all of `tests/`, and all of `data/bpi2020/`. **No research evidence was destroyed. The Phase 12 benchmark was not re-run**, so its measured figures are untouched.
+`IT22267290_FULL_CODEBASE_RESEARCH_AUDIT.md`, `artifacts/tiered_storage_benchmark.json`, `artifacts/openapi_contract_snapshot.json`, `scripts/benchmark_tiered_storage.py`, all of `docs/`, all of `tests/`, and all of `data/bpi2020/`. **No research evidence was destroyed. The Phase 12 benchmark was not re-run**, so its measured figures are untouched.
 
 ---
 

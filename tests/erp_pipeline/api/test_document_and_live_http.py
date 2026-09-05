@@ -28,7 +28,7 @@ from erp_pipeline.orchestration import (
 from erp_pipeline.schemas.enums import SourceType
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ARTIFACT = REPO_ROOT / "artifacts" / "phase13_openapi.json"
+ARTIFACT = REPO_ROOT / "artifacts" / "openapi_contract_snapshot.json"
 
 MANDATORY_PATHS = {
     "/v1/sources",

@@ -9,7 +9,7 @@ table, and writes a JSON artifact. It asserts nothing; the pass/fail judgement
 belongs to the report that reads its output.
 
 Run:
-    python scripts/evaluate_phase3_multimodal.py
+    python scripts/evaluate_multimodal_extraction.py
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ from erp_pipeline.schemas.source_models import SourceEntity, SourceField
 from erp_pipeline.transformation.models import SourceRecord
 from erp_pipeline.transformation.source_native import SourceNativeTransformer
 
-ARTIFACT = ROOT / "artifacts" / "phase3_multimodal_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "multimodal_extraction_evaluation.json"
 
 
 # ----------------------------------------------------------------------

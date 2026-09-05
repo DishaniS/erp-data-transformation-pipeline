@@ -251,7 +251,7 @@ wrong or the value was altered without echoing either.
 
 **New (4):** `schemas/sensitivity.py`,
 `orchestration/representation_crypto.py`,
-`scripts/evaluate_phase10_security_sensitivity.py`, one test file, this report.
+`scripts/evaluate_security_sensitivity.py`, one test file, this report.
 
 **Modified (8):** `orchestration/document_identity.py` (declared sensitivity +
 validation), `api/routers_data.py` (form field),
@@ -286,7 +286,7 @@ encrypt 0.047 ms · decrypt 0.022 ms   (in-process, NOT database or network late
 GATES: PASS
 ```
 
-Artifact: `artifacts/phase10_security_sensitivity_evaluation.json`.
+Artifact: `artifacts/security_sensitivity_evaluation.json`.
 
 ## 25. Targeted results
 
@@ -314,10 +314,10 @@ path was moved in-memory.
 
 ## 27. Existing artifact impact
 
-All nine prior artifacts unchanged. `phase14_response_adaptation_evaluation.json`
+All nine prior artifacts unchanged. `response_adaptation_evaluation.json`
 was regenerated during verification and then **restored byte-for-byte** from a
 backup taken beforehand. Only
-`phase10_security_sensitivity_evaluation.json` was created.
+`security_sensitivity_evaluation.json` was created.
 
 ## 28. Known limitations
 
@@ -370,6 +370,6 @@ does not establish them.
 
 ---
 
-*See also: [Phase 9 — Sync and Lifecycle](phase9_near_real_time_sync_and_lifecycle.md),
-[Phase 8 — Remote Asset Ingestion](phase8_remote_asset_ingestion.md),
-[Phase 5 — Representation Content Resolution](phase5_representation_content_resolution.md).*
+*See also: [Phase 9 — Sync and Lifecycle](near_real_time_sync_and_lifecycle.md),
+[Phase 8 — Remote Asset Ingestion](remote_asset_ingestion.md),
+[Phase 5 — Representation Content Resolution](representation_content_resolution.md).*

@@ -585,6 +585,14 @@ def test_hot_and_warm_answer_a_filter_identically(employees_entity):
 def test_both_tiers_receive_the_same_filter(employees_entity):
     both = Corpus(employees_entity, tiers="both")
     both.add_employee("EMP002", "N", birth_certificate=_pdf("CERT"))
+    # add_employee's default routing sends everything to HOT, which would
+    # leave WARM provably empty - and a provably empty tier is legitimately
+    # skipped rather than queried (see HybridVectorStore._tier_is_empty), so
+    # it would never receive a filter to record. An unrelated point placed
+    # directly on WARM keeps this test about what it says it is about: a
+    # tier that COULD match gets the SAME filter HOT does, not "every
+    # configured tier is queried regardless of whether it holds anything".
+    both.warm.add("warm-unrelated-vector", {"business_key_value": "EMP999"})
     both.find(business_key_value="EMP002")
 
     hot_keys = {c.key for c in both.hot.received_filter.must}

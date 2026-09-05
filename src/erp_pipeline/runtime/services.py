@@ -260,7 +260,9 @@ def build_production_services(
     # The model is constructed lazily by design: importing or starting the
     # application must not download or load MiniLM.
     if resolved.embedding_enabled:
-        services.embedding = _LazyEmbeddingService()
+        services.embedding = _LazyEmbeddingService(
+            configured_dimension=resolved.qdrant.dimension
+        )
 
     services.storage = build_storage_service(resolved, active_engine)
     services.sync = build_sync_service(resolved, active_engine, services)
@@ -278,13 +280,23 @@ class _LazyEmbeddingService:
     guarantee for anyone who starts the app, so it is deferred to first use.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, configured_dimension: int | None = None) -> None:
         self._service: Any = None
         # Read once, directly from the environment - not through _load():
         # tokenizing a filter value needs no model, and a filter-only search
         # (no ``q``) should not be forced to load one just to answer
         # "what token stands for this value".
         self._filter_token_secret = os.environ.get(FILTER_TOKEN_KEY_VARIABLE) or None
+        # What this deployment CONFIGURED the vector width to be, so the width
+        # reported before the model loads is the operator's number rather than
+        # a literal. Falls back to the settings default when the composition
+        # root did not pass one.
+        if configured_dimension is None:
+            from erp_pipeline.runtime.settings import QdrantSettings
+
+            configured_dimension = QdrantSettings().dimension
+
+        self._configured_dimension = int(configured_dimension)
 
     def _load(self) -> Any:
         if self._service is None:
@@ -320,16 +332,35 @@ class _LazyEmbeddingService:
 
     @property
     def model_id(self) -> str:
-        # Reported without loading: the id is configuration, not a weight.
+        """The loaded model's id, or the id this service WILL load.
+
+        Reported without loading, because the id is configuration rather than
+        a weight. Read from ``ai.embedding.DEFAULT_MODEL_ID`` - the same
+        constant ``_load`` builds the model from - instead of a second copy of
+        the string. Two copies would let ``GET /v1/capabilities`` keep
+        reporting the old model after the default changed, which is a
+        capabilities endpoint stating something untrue about the running
+        system.
+        """
         if self._service is None:
-            return "sentence-transformers/all-MiniLM-L6-v2"
+            from erp_pipeline.ai.embedding import DEFAULT_MODEL_ID
+
+            return DEFAULT_MODEL_ID
 
         return self._service.model_id
 
     @property
     def dimension(self) -> int:
+        """The loaded model's width, or the configured expected width.
+
+        Before load this is the CONFIGURED dimension
+        (``ERP_QDRANT_DIMENSION``), not a literal: an operator who configures
+        768 must not be told 384 by the readiness and capabilities endpoints
+        while the vector store is expecting the other number. After load it is
+        the model's own reported width, which is the authority.
+        """
         if self._service is None:
-            return 384
+            return self._configured_dimension
 
         return self._service.dimension
 

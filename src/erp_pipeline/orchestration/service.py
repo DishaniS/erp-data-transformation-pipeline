@@ -519,9 +519,19 @@ class PipelineServices:
 
         # The schema knows which system it describes; the registered source is
         # only a fallback for schemas that predate the field.
-        source_system_id = (
-            getattr(schema, "source_system_id", None) or source_id or "unknown_source"
-        )
+        source_system_id = getattr(schema, "source_system_id", None) or source_id
+
+        if not source_system_id:
+            # Refused rather than defaulted. This value becomes
+            # ``SourceReference.source_system_id`` on every canonical record and
+            # the ``source_system_id`` key on every resulting Qdrant point - it
+            # is one third of the canonical identity triple. A stand-in would
+            # index real business rows under a source system that does not
+            # exist, and nothing downstream could tell that from the truth.
+            raise InvalidPipelineRequestError(
+                "a source-native transformation needs a source system: neither "
+                "the schema nor the job supplied source_system_id"
+            )
 
         return transformer.transform_records(
             records,
@@ -592,11 +602,18 @@ class PipelineServices:
             # the other - the Phase 3 collision, reintroduced by the upload
             # path.
             attachment_scope=_upload_attachment_scope(identity, document_id),
-            source_system_id=identity.source_system_id or "uploaded",
-            source_entity=identity.source_entity or "documents",
+            # Exactly what the caller declared, and nothing else. These are two
+            # thirds of the canonical identity triple and are filterable Qdrant
+            # payload keys, so a stand-in ("uploaded", "documents") would assert
+            # a source system and entity that do not exist - and would collapse
+            # every anonymous upload, from any number of real ERP systems, into
+            # one synthetic identity. Undeclared stays undeclared; the payload
+            # omits the key.
+            source_system_id=identity.source_system_id,
+            source_entity=identity.source_entity,
             # An upload has no ERP column. The declared document type is the
-            # closest true equivalent; "upload" when nothing was declared.
-            source_field=identity.document_type or "upload",
+            # closest true equivalent; absent when nothing was declared.
+            source_field=identity.document_type,
             document_id=document_id,
             business_key_name=identity.business_key_name,
             business_key_value=identity.business_key_value,

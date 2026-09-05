@@ -233,7 +233,7 @@ vector, and one would overwrite the other. Evidence:
 
 Measured: **0 association collisions** across 7 indexed documents, including two
 documents deliberately shared across three employee records each
-(`artifacts/phase3_multimodal_evaluation.json`).
+(`artifacts/multimodal_extraction_evaluation.json`).
 
 ---
 
@@ -316,7 +316,7 @@ so archiving identical content twice produces different ciphertext.
 `page_end`, `page_start`.
 
 An unknown filter is **rejected**, not silently ignored — measured: 7 unknown
-filters refused, 0 accepted (`artifacts/phase4_identity_retrieval_evaluation.json`).
+filters refused, 0 accepted (`artifacts/identity_retrieval_evaluation.json`).
 
 ### Filter limitations (current)
 
@@ -423,7 +423,7 @@ a vector whose payload disagrees with state cannot leak a non-matching hit.
 Superseded vectors still physically present are suppressed by `is_current`.
 
 Measured: **58/58 search hits resolved, 0 unresolvable**
-(`artifacts/phase5_representation_resolution_evaluation.json`).
+(`artifacts/representation_resolution_evaluation.json`).
 
 ---
 
@@ -453,7 +453,7 @@ flowchart TB
 **A CSV upload indexes the schema, never the rows.** Structure is not business
 data, and using schema indexing as a backdoor around mapping review is precisely
 what the design prevents. Measured: `csv_started_an_index_job: false` for
-business rows (`artifacts/phase6_automatic_document_indexing_evaluation.json`).
+business rows (`artifacts/automatic_document_indexing_evaluation.json`).
 
 **Document upload is the opposite** — `POST /v1/files/documents` *does*
 automatically submit a `document_pipeline` job. One call in; a searchable,
@@ -497,7 +497,7 @@ document is *absent* rather than *exposed*.
 
 ### Measured security gates
 
-From `artifacts/phase10_security_sensitivity_evaluation.json`:
+From `artifacts/security_sensitivity_evaluation.json`:
 7 sensitivity assignments, 7 correct, **0 wrong assignments, 0 silent
 downgrades, 0 propagation failures, 0 restricted plaintext findings, 0 Qdrant
 text findings, 0 secret leakage, 0 decryption mismatches**.
@@ -680,7 +680,7 @@ write.
 processing latency*. This is **not** change-data-capture and **not** database
 replication, and must not be described as either.
 
-Measured (`artifacts/phase9_sync_freshness_evaluation.json`): 8 source changes,
+Measured (`artifacts/sync_freshness_evaluation.json`): 8 source changes,
 **0 permanently missed, 0 wrong current-version hits, 0 watermark regressions,
 0 cross-parent deletion errors, 0 idempotence violations**; interval 5.0 s,
 processing median 0.877 ms, p95 1.54 ms.
@@ -809,7 +809,7 @@ review rather than being mapped automatically.
 *Limitation:* author-labelled corpus; top-1 of 1.0 over 68 labels is a ceiling
 effect that cannot discriminate between good and excellent matchers.
 
-### Schema retrieval — `artifacts/phase7_schema_retrieval_evaluation.json`
+### Schema retrieval — `artifacts/schema_retrieval_evaluation.json`
 
 Corpus: 4 source systems, 24 entities, 95 fields, 22 queries.
 
@@ -827,7 +827,7 @@ where `VARBINARY` carries little semantic neighbourhood.
 *Limitation:* 22 queries is a small denominator. **No post-hoc vocabulary
 fitting was performed** — the failures are preserved.
 
-### Response adaptation — `artifacts/phase14_response_adaptation_evaluation.json`
+### Response adaptation — `artifacts/response_adaptation_evaluation.json`
 
 Corpus: 68 cases, 149 relevant + 225 irrelevant labelled fields, synthetic
 payloads modelled on real ERP response shapes.
@@ -847,7 +847,7 @@ are preserved unmodified: `sap-04` (BELNR), `po-05` (supplier_no), `proc-02`
 measured in **bytes of canonical JSON, not tokens** — this project ships no
 tokenizer.
 
-### Storage fidelity — `artifacts/phase12_storage_benchmark.json`
+### Storage fidelity — `artifacts/tiered_storage_benchmark.json`
 
 Corpus: 500 records, 40 queries, 384-D, **live Qdrant**.
 
@@ -861,7 +861,7 @@ shows that int8 quantization and encrypted archival do not change which vectors
 come back. It says nothing about whether those vectors answer an information
 need. Do not label it "retrieval accuracy".
 
-### Synchronisation — `artifacts/phase9_sync_freshness_evaluation.json`
+### Synchronisation — `artifacts/sync_freshness_evaluation.json`
 
 8 source changes · **0 missed · 0 wrong current-version · 0 watermark
 regressions · 0 cross-parent deletion errors** · interval 5.0 s + 0.877 ms
@@ -869,19 +869,19 @@ median processing.
 *Limitation:* polling, not CDC. Small corpus; zero-valued gates are informative
 because one violation falsifies the claim.
 
-### Security — `artifacts/phase10_security_sensitivity_evaluation.json`
+### Security — `artifacts/security_sensitivity_evaluation.json`
 
 7 assignments · **0 wrong · 0 silent downgrades · 0 propagation failures ·
 0 restricted plaintext findings · 0 Qdrant text findings · 0 secret leakage**.
 
-### Integration — `artifacts/phase11_group_integration_evaluation.json`
+### Integration — `artifacts/integration_contract_evaluation.json`
 
 **21/21 scenarios passed**; 9 gates at zero including 0 ERP executions by this
 service and 0 policy decisions.
 *Limitation:* the other three components are **test doubles**, not real
 implementations. This establishes contract coherence, not interoperability.
 
-### Final consolidation — `artifacts/phase12_final_component_evaluation.json`
+### Final consolidation — `artifacts/consolidated_component_evaluation.json`
 
 **30/30 scenarios**, 16 hard gates at zero, across 10 end-to-end cases.
 

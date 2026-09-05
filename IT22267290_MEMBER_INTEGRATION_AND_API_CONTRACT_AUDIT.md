@@ -135,7 +135,7 @@ admin workflow.
 
 # PART 3 — COMPLETE MEMBER 4 REST API INVENTORY
 
-All 23 operations, from `artifacts/phase13_openapi.json` (regenerated from the
+All 23 operations, from `artifacts/openapi_contract_snapshot.json` (regenerated from the
 live app by `tests/erp_pipeline/api/test_document_and_live_http.py`).
 
 Auth rule (`api/security.py:53-60`, **verified by execution**): public paths are
@@ -643,7 +643,7 @@ re-implementing dialect normalisation.
 **`SourceRelationship` uses `from_entity`/`to_entity`/`from_fields`/`to_fields`/
 `confidence`.** *(An earlier draft of this API used `source_entity`/
 `target_entity`; that was corrected during integration stabilization. Member 2
-must code against `artifacts/phase13_openapi.json`, which a contract test
+must code against `artifacts/openapi_contract_snapshot.json`, which a contract test
 regenerates from the live app.)*
 
 # DOES MEMBER 4 EXECUTE APIs?
@@ -2311,7 +2311,7 @@ READY
 Member 2 integration:
 READY
   — POST /v1/responses/adapt is complete, tested (106 tests), measured
-    (artifacts/phase14_response_adaptation_evaluation.json) and needs NO
+    (artifacts/response_adaptation_evaluation.json) and needs NO
     infrastructure. Schema and API-spec metadata endpoints work.
     One degraded field: decisions[].target_path is always null.
 

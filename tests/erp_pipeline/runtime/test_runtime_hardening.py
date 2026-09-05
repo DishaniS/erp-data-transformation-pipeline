@@ -560,8 +560,8 @@ def _ignored(relative: str) -> bool:
 def test_research_artifacts_and_fixtures_are_trackable():
     """A clone that cannot run the suite is not a reproducible artifact."""
     for asset in (
-        "artifacts/phase12_storage_benchmark.json",
-        "artifacts/phase13_openapi.json",
+        "artifacts/tiered_storage_benchmark.json",
+        "artifacts/openapi_contract_snapshot.json",
         "tests/fixtures/ingestion/normal.csv",
     ):
         if (REPO_ROOT / asset).exists():

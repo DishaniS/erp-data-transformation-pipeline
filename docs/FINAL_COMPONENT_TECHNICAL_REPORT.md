@@ -464,7 +464,7 @@ count.
 ## 24. API contract
 
 24 operations, OpenAPI 3.1.0, service version 1.0, snapshot at
-`artifacts/phase13_openapi.json`.
+`artifacts/openapi_contract_snapshot.json`.
 
 Authentication: `X-API-Key`, constant-time comparison. All mutating methods
 require it; reads require it when `protect_reads` is enabled (default off).
@@ -479,7 +479,7 @@ traceback, no dataclass `repr`, no enum `repr`, and no internal module path.
 ## 25. Member integration
 
 Full contract:
-[`phase11_group_integration_contract.md`](phase11_group_integration_contract.md).
+[`group_integration_contract.md`](group_integration_contract.md).
 
 - **Member 3** → uploads, jobs, search, resolve. Its trusted backend holds the
   API key; the browser must never.
@@ -669,15 +669,15 @@ remote fetching disabled, scheduler disabled.
 ```
 
 ```bash
-.venv/Scripts/python.exe scripts/evaluate_phase12_final_component.py
+.venv/Scripts/python.exe scripts/evaluate_consolidated_component.py
 ```
 
 ```bash
-.venv/Scripts/python.exe scripts/run_phase14_response_adaptation_evaluation.py
+.venv/Scripts/python.exe scripts/evaluate_response_adaptation.py
 ```
 
 ```bash
-.venv/Scripts/python.exe scripts/run_phase12_benchmark.py
+.venv/Scripts/python.exe scripts/benchmark_tiered_storage.py
 ```
 
 ```bash
@@ -688,8 +688,8 @@ Per-phase evaluators are `scripts/evaluate_phase{3..11}_*.py`. No internet
 access is required by any of them; the remote-asset evaluator uses an injected
 recorder and opens no sockets.
 
-**Note:** `run_phase14_response_adaptation_evaluation.py` and
-`run_phase12_benchmark.py` **overwrite their own artifacts**. Back up, run,
+**Note:** `evaluate_response_adaptation.py` and
+`benchmark_tiered_storage.py` **overwrite their own artifacts**. Back up, run,
 compare, restore if the original must be preserved.
 
 ## 33. Final readiness

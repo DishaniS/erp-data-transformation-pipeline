@@ -628,7 +628,7 @@ Qdrant was **not reachable** during this audit, so this is derived from
 | **`erp_vectors_hot`** (`ERP_QDRANT_HOT_COLLECTION`) | Low-latency search | 384 | Cosine | **none**, in RAM, not on disk | 11 keys | HOT | `TIER_ROUTE` / migration | `POST /v1/search` |
 | **`erp_vectors_warm`** (`ERP_QDRANT_WARM_COLLECTION`) | Lower footprint | 384 | Cosine | **int8 scalar, `on_disk=True`**, server-verified | 11 keys | WARM | same | same |
 | *temporary rehydration* | COLD search | 384 | Cosine | none | same | COLD | `include_cold=true` | same request only |
-| `erp_phase12_bench_*` | Benchmark isolation | 384 | Cosine | per-tier | — | — | `scripts/run_phase12_benchmark.py` | benchmark |
+| `erp_phase12_bench_*` | Benchmark isolation | 384 | Cosine | per-tier | — | — | `scripts/benchmark_tiered_storage.py` | benchmark |
 
 **Two production collections. Both are tier-separated, not modality-separated.**
 
@@ -1299,8 +1299,8 @@ half-built against the revised scope. C4 and C7 are engineering, not novelty.**
 | Contribution | Evidence status | Artifact |
 |---|---|---|
 | C1 mapping | **MEASURED** | `tests/erp_pipeline/mapping/test_mapping_benchmark.py` — 68 labels (60 positive, 8 negative) |
-| C3 tiered storage | **MEASURED** | `artifacts/phase12_storage_benchmark.json` — 500 vectors, latency/recall/footprint, `claim_safety` block |
-| C5 response adaptation | **MEASURED** | `artifacts/phase14_response_adaptation_evaluation.json` — 68 cases, 3 methods, ablation |
+| C3 tiered storage | **MEASURED** | `artifacts/tiered_storage_benchmark.json` — 500 vectors, latency/recall/footprint, `claim_safety` block |
+| C5 response adaptation | **MEASURED** | `artifacts/response_adaptation_evaluation.json` — 68 cases, 3 methods, ablation |
 | C2 multimodal preparation | **TESTED ONLY** | Unit/integration tests; **no experiment measures extraction quality** |
 | C4 semantic retrieval | **DEMONSTRATED** | Recall 0.15@1 / 0.475@3 / 0.55@5 — *identical across tiers*, measuring **fidelity, not retrieval quality** |
 | **C6 schema vector retrieval** | **NOT EVALUATED** | **No code exists** |

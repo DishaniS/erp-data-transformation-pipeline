@@ -375,7 +375,7 @@ when nothing usable could be produced at all.
 ## 14. Measured results
 
 Full numbers, per-category breakdowns and per-case detail:
-`artifacts/phase14_response_adaptation_evaluation.json`.
+`artifacts/response_adaptation_evaluation.json`.
 
 68 labelled cases across six response families. Three methods, one matcher, one
 field-counting rule.

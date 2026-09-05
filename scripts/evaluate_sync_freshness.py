@@ -12,7 +12,7 @@ The clock is injected and the executor is inline, so nothing sleeps and the
 result is deterministic.
 
 Run:
-    python scripts/evaluate_phase9_sync_freshness.py
+    python scripts/evaluate_sync_freshness.py
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ from tests.erp_pipeline.api.test_search_resolution_and_filters import (
     PatchedStorage,
 )
 
-ARTIFACT = ROOT / "artifacts" / "phase9_sync_freshness_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "sync_freshness_evaluation.json"
 
 #: The configured interval this evaluation runs at. Reported alongside every
 #: latency, because a freshness number without its interval is meaningless.

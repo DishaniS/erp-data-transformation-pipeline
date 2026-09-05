@@ -102,7 +102,7 @@ trustworthiness.
 matcher. Top-1 = 1.0 on 68 labels is a ceiling effect: the benchmark is not
 hard enough to discriminate between good and excellent matchers.
 
-## 5. Storage fidelity evaluation (C3) — `phase12_storage_benchmark.json`
+## 5. Storage fidelity evaluation (C3) — `tiered_storage_benchmark.json`
 
 Ran against **live Qdrant**, 500 records, 40 queries, 384-D real model output.
 
@@ -125,7 +125,7 @@ is a fetch-by-id, not a similarity search, and the cold footprint figure covers
 a different scope (header, nonce, GCM tag, compression) from the comparable
 vector-component proxy.
 
-## 6. Multimodal evaluation (C2) — `phase3_multimodal_evaluation.json`
+## 6. Multimodal evaluation (C2) — `multimodal_extraction_evaluation.json`
 
 | Measurement | Value |
 |---|---|
@@ -148,7 +148,7 @@ identity is its *attachment* (`parent | source_field | chunk_id`) rather than
 its content, which is what makes 0 collisions achievable when the same
 certificate is attached to two employees.
 
-## 7. Identity retrieval evaluation (C4) — `phase4_identity_retrieval_evaluation.json`
+## 7. Identity retrieval evaluation (C4) — `identity_retrieval_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -170,7 +170,7 @@ are one declaration in two fields, that identity is declared rather than
 inferred from filenames or OCR text, and that an unknown filter is rejected
 rather than silently ignored. The zero-valued gates are the evidence.
 
-## 8. Representation resolution evaluation — `phase5_representation_resolution_evaluation.json`
+## 8. Representation resolution evaluation — `representation_resolution_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -186,7 +186,7 @@ rather than silently ignored. The zero-valued gates are the evidence.
 The architectural claim under test: a representation must never become
 searchable without resolvable content. 58/58 is the whole result.
 
-## 9. Automatic upload evaluation — `phase6_automatic_document_indexing_evaluation.json`
+## 9. Automatic upload evaluation — `automatic_document_indexing_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -200,7 +200,7 @@ searchable without resolvable content. 58/58 is the whole result.
 image is rasterised and passed to Tesseract. Quoting the median alone would
 describe only the cheap path.
 
-## 10. Schema retrieval evaluation (C6) — `phase7_schema_retrieval_evaluation.json`
+## 10. Schema retrieval evaluation (C6) — `schema_retrieval_evaluation.json`
 
 | Metric | Value |
 |---|---|
@@ -227,7 +227,7 @@ result's meaning — the benchmark would then measure the author's memory of the
 failures, not the system's retrieval. This is recorded as a limitation, not
 repaired.
 
-## 11. Remote asset security evaluation — `phase8_remote_asset_evaluation.json`
+## 11. Remote asset security evaluation — `remote_asset_security_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -250,7 +250,7 @@ Re-verified at freeze in Phase 12 CASE 3: 5/5 unsafe targets (loopback,
 link-local metadata, RFC1918, `file://`, credentials-in-URL) refused before
 contact, 0 contacted.
 
-## 12. Synchronisation and freshness evaluation (C7) — `phase9_sync_freshness_evaluation.json`
+## 12. Synchronisation and freshness evaluation (C7) — `sync_freshness_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -271,7 +271,7 @@ synchronisation interval plus processing latency* — measured here as **5.0 s +
 This is **not** CDC and **not** database replication. Nothing sleeps in the
 evaluation; the clock is injected.
 
-## 13. Sensitivity and security evaluation — `phase10_security_sensitivity_evaluation.json`
+## 13. Sensitivity and security evaluation — `security_sensitivity_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -289,7 +289,7 @@ Resolution rule: **strictest wins**. Where several trusted declarations apply,
 the most restrictive is chosen — treating restricted data as internal is a
 disclosure, while the reverse is an inconvenience.
 
-## 14. Four-member integration evaluation — `phase11_group_integration_evaluation.json`
+## 14. Four-member integration evaluation — `integration_contract_evaluation.json`
 
 | Gate | Value |
 |---|---|
@@ -317,7 +317,7 @@ The zero for *Member 4 ERP executions* is **structural, not merely observed**:
 an AST scan proves no HTTP client (`requests`, `httpx`, `aiohttp`) and no MCP
 library is imported anywhere in the production package.
 
-## 15. Adaptive response transformation (C5) — `phase14_response_adaptation_evaluation.json`
+## 15. Adaptive response transformation (C5) — `response_adaptation_evaluation.json`
 
 68 cases, 149 relevant and 225 irrelevant labelled fields, three arms.
 
@@ -352,7 +352,7 @@ seeing them fail would convert a measurement into a memory.
 Context reduction is measured on **bytes of canonical JSON, not tokens**: this
 project ships no tokenizer, and an invented token count would be a guess.
 
-## 16. Final end-to-end evaluation — `phase12_final_component_evaluation.json`
+## 16. Final end-to-end evaluation — `consolidated_component_evaluation.json`
 
 30 scenarios across 10 cases, all passing; all 16 hard gates at zero.
 

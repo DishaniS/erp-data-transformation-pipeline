@@ -150,9 +150,13 @@ def extract_record_assets(
         counts["extracted"] += 1
         attachment = DocumentAttachment(
             parent_record_id=parent_id,
-            source_system_id=getattr(source, "source_system_id", "unknown_source"),
+            # From the registered source and the discovered entity - the only
+            # two things that actually know where this BLOB came from. No
+            # stand-in: if neither supplies a value the payload omits the key
+            # rather than asserting a source system that does not exist.
+            source_system_id=getattr(source, "source_system_id", None),
             source_entity=getattr(source, "source_entity", None)
-            or getattr(entity, "source_name", "unknown_entity"),
+            or getattr(entity, "source_name", None),
             source_field=field_name,
             document_id=asset.document_id or "",
             business_key_name=key_name,

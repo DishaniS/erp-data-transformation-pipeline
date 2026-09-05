@@ -10,7 +10,7 @@ dictionary would pass every assertion here and still lose the corpus on restart
 - which is the defect being fixed.
 
 Run:
-    python scripts/evaluate_phase5_representation_resolution.py
+    python scripts/evaluate_representation_resolution.py
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ from erp_pipeline.sync.hashing import vector_id_for
 from erp_pipeline.transformation.models import SourceRecord
 from erp_pipeline.transformation.source_native import SourceNativeTransformer
 
-ARTIFACT = ROOT / "artifacts" / "phase5_representation_resolution_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "representation_resolution_evaluation.json"
 VECTOR = [0.1, 0.2, 0.3, 0.4]
 
 

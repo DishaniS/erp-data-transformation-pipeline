@@ -9,7 +9,7 @@ Synthetic markers are planted throughout so leakage is DETECTED rather than
 assumed absent.
 
 Run:
-    python scripts/evaluate_phase10_security_sensitivity.py
+    python scripts/evaluate_security_sensitivity.py
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ from erp_pipeline.storage.migration import _payload_for
 from erp_pipeline.transformation.models import SourceRecord
 from erp_pipeline.transformation.source_native import SourceNativeTransformer
 
-ARTIFACT = ROOT / "artifacts" / "phase10_security_sensitivity_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "security_sensitivity_evaluation.json"
 
 #: Planted so leakage is detected, not assumed. Each marks a different surface
 #: that has leaked in some system somewhere.

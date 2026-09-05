@@ -284,7 +284,7 @@ ordinary scalar content.
 ## 24. Files changed
 
 **New (4):** `ingestion/remote_assets.py`,
-`scripts/evaluate_phase8_remote_assets.py`, two test files, this report.
+`scripts/evaluate_remote_asset_security.py`, two test files, this report.
 
 **Modified (6):** `orchestration/multimodal.py` (one loop, two attachment
 kinds), `orchestration/stages.py`, `orchestration/service.py`,
@@ -333,7 +333,7 @@ fetch + extract    median 1.774 ms   p95 6.514 ms
 GATES: PASS
 ```
 
-Artifact: `artifacts/phase8_remote_asset_evaluation.json`.
+Artifact: `artifacts/remote_asset_security_evaluation.json`.
 
 ### A measurement defect I fixed in my own evaluation
 
@@ -390,14 +390,14 @@ test in this phase requires a network — every fetch is injected.
 
 | artifact | status |
 |---|---|
-| `phase12_storage_benchmark.json` | unchanged |
-| `phase14_response_adaptation_evaluation.json` | unchanged |
-| `phase3_multimodal_evaluation.json` | unchanged |
-| `phase4_identity_retrieval_evaluation.json` | unchanged |
-| `phase5_representation_resolution_evaluation.json` | unchanged |
-| `phase6_automatic_document_indexing_evaluation.json` | unchanged |
-| `phase7_schema_retrieval_evaluation.json` | unchanged — the corpus was **not** touched to improve its datatype retrieval |
-| `phase8_remote_asset_evaluation.json` | **new** |
+| `tiered_storage_benchmark.json` | unchanged |
+| `response_adaptation_evaluation.json` | unchanged |
+| `multimodal_extraction_evaluation.json` | unchanged |
+| `identity_retrieval_evaluation.json` | unchanged |
+| `representation_resolution_evaluation.json` | unchanged |
+| `automatic_document_indexing_evaluation.json` | unchanged |
+| `schema_retrieval_evaluation.json` | unchanged — the corpus was **not** touched to improve its datatype retrieval |
+| `remote_asset_security_evaluation.json` | **new** |
 
 ## 30. Known limitations
 
@@ -462,5 +462,5 @@ Legacy ERP → EMP002 → birth_certificate_url
 
 ---
 
-*See also: [Phase 7 — Schema Vector Retrieval](phase7_schema_vector_retrieval.md),
-[Phase 3 — Database BLOB Multimodal Pipeline](phase3_database_blob_multimodal_pipeline.md).*
+*See also: [Phase 7 — Schema Vector Retrieval](schema_vector_retrieval.md),
+[Phase 3 — Database BLOB Multimodal Pipeline](database_blob_multimodal_pipeline.md).*

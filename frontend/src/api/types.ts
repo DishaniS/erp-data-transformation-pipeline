@@ -1,7 +1,7 @@
 /**
  * Response types for the two upload endpoints this frontend uses.
  *
- * Taken from `artifacts/phase13_openapi.json`, which FastAPI generates from the
+ * Taken from `artifacts/openapi_contract_snapshot.json`, which FastAPI generates from the
  * running application. The backend returns more than the UI displays; only the
  * fields this screen can show are typed here.
  */

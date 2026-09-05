@@ -1,12 +1,12 @@
 """Run the Phase 14 response-adaptation evaluation.
 
-    python scripts/run_phase14_response_adaptation_evaluation.py
+    python scripts/evaluate_response_adaptation.py
 
 Needs no database, no Qdrant, no network and no model download: adaptation is
 pure computation over payloads the dataset carries, which is what makes this
 result reproducible on any machine from a clean checkout.
 
-Writes ``artifacts/phase14_response_adaptation_evaluation.json``. Every number
+Writes ``artifacts/response_adaptation_evaluation.json``. Every number
 in it is measured by this run. Nothing is copied forward from a previous one.
 """
 
@@ -41,7 +41,7 @@ from erp_pipeline.response_adaptation.relevance import (  # noqa: E402
     QUERY_INTENT_TERMS,
 )
 
-DEFAULT_ARTIFACT = ROOT / "artifacts" / "phase14_response_adaptation_evaluation.json"
+DEFAULT_ARTIFACT = ROOT / "artifacts" / "response_adaptation_evaluation.json"
 
 #: Recall failures this run is expected to contain, with the cause each was
 #: classified as after inspecting its per-field scores. Listed in the artifact

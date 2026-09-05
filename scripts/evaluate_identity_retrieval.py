@@ -9,7 +9,7 @@ This is a technical mini-evaluation, not the final research experiment. It
 asserts nothing; the pass/fail judgement belongs to the report that reads it.
 
 Run:
-    python scripts/evaluate_phase4_identity_retrieval.py
+    python scripts/evaluate_identity_retrieval.py
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ from erp_pipeline.sync.hashing import vector_id_for
 from erp_pipeline.transformation.models import SourceRecord
 from erp_pipeline.transformation.source_native import SourceNativeTransformer
 
-ARTIFACT = ROOT / "artifacts" / "phase4_identity_retrieval_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "identity_retrieval_evaluation.json"
 VECTOR = [0.1, 0.2, 0.3, 0.4]
 
 

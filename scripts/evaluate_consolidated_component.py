@@ -19,7 +19,7 @@ its happy path would have no evidence about what it does when a BLOB is
 unreadable, a URL is refused, or an encryption key is missing.
 
 Run:
-    .venv/Scripts/python.exe scripts/evaluate_phase12_final_component.py
+    .venv/Scripts/python.exe scripts/evaluate_consolidated_component.py
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-ARTIFACT = ROOT / "artifacts" / "phase12_final_component_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "consolidated_component_evaluation.json"
 
 CERTIFICATE_A = [
     "BIRTH CERTIFICATE",

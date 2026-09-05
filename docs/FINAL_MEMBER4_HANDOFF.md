@@ -219,7 +219,7 @@ Member 4
 | Resolve text | `GET /v1/representations/{representation_id}` |
 | Adapt ERP response | `POST /v1/responses/adapt` |
 
-24 operations total; contract snapshot at `artifacts/phase13_openapi.json`.
+24 operations total; contract snapshot at `artifacts/openapi_contract_snapshot.json`.
 
 ## 10. Demo order
 
@@ -239,7 +239,7 @@ Describe it rather than running it, unless a fetcher is configured.
 Reproduce the whole set deterministically:
 
 ```bash
-.venv/Scripts/python.exe scripts/evaluate_phase12_final_component.py
+.venv/Scripts/python.exe scripts/evaluate_consolidated_component.py
 ```
 
 ## 11. Known limitations
@@ -276,8 +276,8 @@ Reproduce the whole set deterministically:
   re-execute — it never executed anything.
 - ...tune the evaluation corpora to improve a metric. The failures
   (`po-05`, `proc-02`, `sap-04`, the datatype queries) are results, not bugs.
-- ...run `run_phase14_response_adaptation_evaluation.py` or
-  `run_phase12_benchmark.py` casually — they overwrite their own artifacts.
+- ...run `evaluate_response_adaptation.py` or
+  `benchmark_tiered_storage.py` casually — they overwrite their own artifacts.
   Back up, run, compare, restore.
 
 ## 13. Reference documents
@@ -287,7 +287,7 @@ Reproduce the whole set deterministically:
 | [`FINAL_COMPONENT_TECHNICAL_REPORT.md`](FINAL_COMPONENT_TECHNICAL_REPORT.md) | Authoritative technical description |
 | [`IT22267290_FINAL_COMPONENT_COMPLIANCE_AUDIT.md`](IT22267290_FINAL_COMPONENT_COMPLIANCE_AUDIT.md) | 38 requirements, readiness 91.5/100 |
 | [`IT22267290_FINAL_RESEARCH_EVALUATION.md`](IT22267290_FINAL_RESEARCH_EVALUATION.md) | Evidence, metrics, threats to validity |
-| [`phase11_group_integration_contract.md`](phase11_group_integration_contract.md) | Full cross-member API contract |
-| `artifacts/phase13_openapi.json` | OpenAPI snapshot, 24 operations |
+| [`group_integration_contract.md`](group_integration_contract.md) | Full cross-member API contract |
+| `artifacts/openapi_contract_snapshot.json` | OpenAPI snapshot, 24 operations |
 
 **Status: COMPLETE WITH DOCUMENTED LIMITATIONS.**

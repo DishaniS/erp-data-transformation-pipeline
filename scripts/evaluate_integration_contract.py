@@ -15,7 +15,7 @@ are labelled as such. They say nothing about production ERP latency, which
 lives entirely on Member 2's side of the boundary.
 
 Run:
-    .venv/Scripts/python.exe scripts/evaluate_phase11_group_integration.py
+    .venv/Scripts/python.exe scripts/evaluate_integration_contract.py
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-ARTIFACT = ROOT / "artifacts" / "phase11_group_integration_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "integration_contract_evaluation.json"
 
 
 def _client(member4):

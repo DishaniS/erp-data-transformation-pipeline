@@ -8,7 +8,7 @@ The recording fetcher is the instrument that matters: a refusal only counts if
 the fetcher was never called, and that is measured rather than assumed.
 
 Run:
-    python scripts/evaluate_phase8_remote_assets.py
+    python scripts/evaluate_remote_asset_security.py
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from erp_pipeline.storage.migration import _payload_for
 from erp_pipeline.transformation.models import SourceRecord
 from erp_pipeline.transformation.source_native import SourceNativeTransformer
 
-ARTIFACT = ROOT / "artifacts" / "phase8_remote_asset_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "remote_asset_security_evaluation.json"
 
 SECRET = "SUPERSECRETTOKEN"
 PUBLIC = "93.184.216.34"

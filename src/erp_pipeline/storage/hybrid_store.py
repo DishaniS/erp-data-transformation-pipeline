@@ -165,6 +165,27 @@ def _tier_fetch(
     return list(fetch(query_filter, limit=limit))
 
 
+def _tier_is_empty(backend: Any) -> bool:
+    """Whether a tier provably holds nothing, when that can be asked at all.
+
+    Tolerant by design: a backend with no ``count()`` (an exotic third-party
+    tier, or a test double that predates it) is treated as non-empty rather
+    than raising - the caller still queries it and takes whatever answer it
+    gives, exactly as before this check existed. A backend whose ``count()``
+    itself fails is treated the same way, so a transient error here cannot
+    turn into a silently skipped tier.
+    """
+    count = getattr(backend, "count", None)
+
+    if count is None:
+        return False
+
+    try:
+        return int(count()) == 0
+    except Exception:  # noqa: BLE001 - err toward querying, not skipping
+        return False
+
+
 def _accepts_query_filter(search: Any) -> bool:
     """Whether a tier's ``search`` declares a ``query_filter`` parameter."""
     try:
@@ -504,6 +525,15 @@ class HybridVectorStore:
             if backend is None:
                 continue
 
+            if query_filter is not None and _tier_is_empty(backend):
+                # An empty tier cannot match a filtered query, and Qdrant
+                # Cloud requires a payload index to even ATTEMPT one - a tier
+                # that has never received a write for the filtered field
+                # will not have it, and would 400 rather than return no
+                # results. Skipping is both correct (nothing here matches)
+                # and what avoids that error.
+                continue
+
             searched.append(tier)
 
             for vector_id, score in _tier_search(backend, vector, limit, query_filter):
@@ -580,6 +610,13 @@ class HybridVectorStore:
             }[tier]
 
             if backend is None:
+                continue
+
+            if _tier_is_empty(backend):
+                # fetch() is always filtered (empty filters are refused
+                # above), so the same reasoning as search() applies: an
+                # empty tier cannot match, and may not even have an index
+                # for the filtered field yet.
                 continue
 
             searched.append(tier)

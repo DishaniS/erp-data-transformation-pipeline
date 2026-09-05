@@ -1223,9 +1223,11 @@ def search_get(
 
         - with ``q``: semantic ranking inside the filtered scope.
         - without ``q``: exact identity/metadata retrieval, no ranking.
-          ``source_system_id=legacy_erp_pg&source_entity=hr.employees&
-          record_key=EMP-0001`` therefore returns EMP-0001 directly, with
-          no query text required.
+          Supplying the full canonical identity - ``source_system_id`` +
+          ``source_entity`` + ``record_key``, whatever those are in YOUR
+          catalog - therefore returns that one record directly, with no
+          query text required. Call this endpoint bare to discover the
+          systems, entities and fields this deployment actually holds.
 
     Either way, filters are pushed into Qdrant as a server-side constraint
     BEFORE anything else runs - a ``Filter`` for semantic ranking

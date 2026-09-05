@@ -13,7 +13,7 @@ Uses the real 384-dimensional embedding model. A deterministic stand-in would
 make every recall figure meaningless.
 
 Run:
-    python scripts/evaluate_phase7_schema_retrieval.py
+    python scripts/evaluate_schema_retrieval.py
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ from tests.erp_pipeline.api.test_search_resolution_and_filters import (
     PatchedStorage,
 )
 
-ARTIFACT = ROOT / "artifacts" / "phase7_schema_retrieval_evaluation.json"
+ARTIFACT = ROOT / "artifacts" / "schema_retrieval_evaluation.json"
 
 TEXT = FieldDataType.STRING
 NUM = FieldDataType.DECIMAL

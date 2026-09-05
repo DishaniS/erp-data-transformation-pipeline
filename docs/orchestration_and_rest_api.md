@@ -309,7 +309,7 @@ Credential and upload routes do not log request bodies.
 
 ## 34. Generated OpenAPI
 
-`artifacts/phase13_openapi.json` is exported **from the running app**. There is
+`artifacts/openapi_contract_snapshot.json` is exported **from the running app**. There is
 no second hand-written specification to drift from it. A test asserts every
 mandatory route is present, operation ids are unique, and no planted secret
 appears anywhere in it.

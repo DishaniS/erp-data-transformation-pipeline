@@ -6,7 +6,7 @@ modified. A sibling repository (`low-code-workflow-engine`) exists in the
 workspace and was **not read or touched**.
 
 This report records what changed and why. The contract itself lives in
-[`phase11_group_integration_contract.md`](phase11_group_integration_contract.md)
+[`group_integration_contract.md`](group_integration_contract.md)
 and is not repeated here.
 
 ---
@@ -189,8 +189,8 @@ capability list cannot quietly grow marketing entries).
 
 ## 8. Mini-evaluation
 
-`scripts/evaluate_phase11_group_integration.py` →
-`artifacts/phase11_group_integration_evaluation.json`
+`scripts/evaluate_integration_contract.py` →
+`artifacts/integration_contract_evaluation.json`
 
 **21/21 scenarios passed. All nine gates at zero.** Member 2 ERP executions
 expected/actual: **5 / 5**.
@@ -226,17 +226,17 @@ orchestration): **900 passed, 27 skipped, 0 failed** in 162.53s.
 ## 10. Existing research artifact impact
 
 No prior evaluation artifact was overwritten. MD5-verified: only
-`phase11_group_integration_evaluation.json` was created; all ten earlier
+`integration_contract_evaluation.json` was created; all ten earlier
 artifacts are byte-identical with their original timestamps.
 
-`artifacts/phase13_openapi.json` regenerates from its own test on every run —
+`artifacts/openapi_contract_snapshot.json` regenerates from its own test on every run —
 pre-existing behaviour, and it is **not** in the preserved list. After Phase 11
 it carries the `CapabilityStatus` schema (3 references) and the
 `integration_capabilities` field (1), because that is what the API now serves.
 A generated contract snapshot that did *not* change here would be the problem:
 it is the artifact all four members integrate against.
 
-`phase14_response_adaptation_evaluation.json` was backed up before the full
+`response_adaptation_evaluation.json` was backed up before the full
 regression and verified byte-identical afterwards — its evaluation was not
 re-run in this phase, so no restore was needed.
 

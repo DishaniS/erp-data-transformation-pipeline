@@ -1,6 +1,6 @@
 """Run the Phase 12 hybrid tiered storage benchmark against live infrastructure.
 
-    python scripts/run_phase12_benchmark.py
+    python scripts/benchmark_tiered_storage.py
 
 Requires a reachable Qdrant. Uses its OWN isolated collections, prefixed
 ``erp_phase12_bench_``, and deletes them at the end. The production BPI
@@ -81,7 +81,7 @@ def main() -> int:
     parser.add_argument("--queries", type=int, default=40)
     parser.add_argument("--movement", type=int, default=100)
     parser.add_argument(
-        "--output", default=str(ROOT / "artifacts" / "phase12_storage_benchmark.json")
+        "--output", default=str(ROOT / "artifacts" / "tiered_storage_benchmark.json")
     )
     args = parser.parse_args()
 

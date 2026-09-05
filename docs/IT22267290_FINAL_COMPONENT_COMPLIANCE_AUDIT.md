@@ -182,7 +182,7 @@ Mapped to concrete deliverables:
 | No content resolution | Phase 5 | 58/58 hits resolved |
 | Sensitivity metadata only, plaintext at rest | Phase 10 AES-256-GCM, fail-closed | 0 restricted plaintext findings |
 | No cross-member contract | Phase 11 | 114 tests, 21/21 scenarios, 9 gates at zero |
-| OpenAPI not published | `artifacts/phase13_openapi.json` regenerated from its own test | 24 operations |
+| OpenAPI not published | `artifacts/openapi_contract_snapshot.json` regenerated from its own test | 24 operations |
 | Uploaded `sensitivity` silently dropped | Phase 11 one-line fix | Phase 12 CASE 8 |
 | Caller's tier-state store silently replaced | Phase 11 `is not None` fix | Restart contract test |
 
