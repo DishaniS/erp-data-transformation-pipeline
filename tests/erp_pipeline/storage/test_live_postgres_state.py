@@ -133,6 +133,19 @@ def test_bootstrap_is_idempotent(engine, schema):
     bootstrap_storage_schema(engine, schema=schema)
 
 
+def test_candidate_batch_lookup_survives_restart_and_has_vector_index(store, engine, schema):
+    import sqlalchemy as sa
+    first = make_metadata(now=NOW)
+    store.save(first)
+    store.save(replace(first, representation_id="unrelated", vector_id="unrelated-vector"))
+    restarted = PostgresTierStateStore(engine, schema=schema)
+    assert restarted.load_many_by_vector_ids([first.vector_id, "missing", first.vector_id]) == (store.load(first.representation_id),)
+    assert restarted.load_many_by_vector_ids([]) == ()
+    with engine.connect() as connection:
+        definition = connection.execute(sa.text("SELECT indexdef FROM pg_indexes WHERE schemaname = :schema AND indexname = 'vector_storage_state_vector_idx'"), {"schema": schema}).scalar()
+    assert "(vector_id)" in definition
+
+
 def test_state_insert_and_read(store: PostgresTierStateStore):
     metadata = make_metadata(now=NOW)
     store.save(metadata)

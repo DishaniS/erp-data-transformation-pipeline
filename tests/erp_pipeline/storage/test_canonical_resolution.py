@@ -340,14 +340,14 @@ def test_a_search_hit_carries_the_canonical_id(state):
     assert result.hits[0].entity_type == "invoice"
 
 
-def test_a_hit_for_a_vector_with_no_state_reports_no_canonical_id(state):
+def test_a_vector_with_no_authoritative_state_is_not_returned(state):
     hot = RecordingTier()
     store = HybridVectorStore(TierSet(hot=hot), state)
     hot.search = lambda vector, limit=5, query_filter=None: [("orphan-vec", 0.5)]
 
     result = store.search([0.1, 0.2, 0.3, 0.4], limit=5)
 
-    assert result.hits[0].canonical_record_id is None
+    assert result.hits == ()
 
 
 # ============================================================

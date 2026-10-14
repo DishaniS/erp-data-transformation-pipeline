@@ -144,6 +144,7 @@ def test_production_composition_uses_no_in_memory_store(build_app):
     selected = {
         "job_store": type(orchestration.jobs).__name__,
         "records": type(services.records).__name__,
+        "lifecycle": type(services.lifecycle).__name__,
         "sources": type(services.sources).__name__,
         "uploads": type(services.uploads).__name__,
         "drafts": type(services.mapping_drafts).__name__,
@@ -152,6 +153,7 @@ def test_production_composition_uses_no_in_memory_store(build_app):
 
     assert selected["job_store"] == "PostgresJobStore"
     assert selected["records"] == "PostgresCanonicalRecordStore"
+    assert selected["lifecycle"] == "PostgresLifecycleRegistry"
     assert selected["sources"] == "PostgresSourceRegistry"
     assert selected["uploads"] == "PostgresUploadStore"
     assert selected["drafts"] == "PostgresMappingDraftStore"
@@ -185,6 +187,28 @@ def test_phase_10_is_wired_with_durable_sync_state(build_app):
 
     assert services.sync is not None
     assert type(services.sync.state_store).__name__ == "PostgresSyncStateStore"
+
+
+def test_document_lifecycle_survives_restart_and_supersedes_old_content(build_app):
+    """The production registry must not resurrect an old document on restart."""
+    logical_key = f"attachment:test:{uuid.uuid4().hex}|birth_certificate"
+    old_id = f"ai:document:{uuid.uuid4().hex}"
+    new_id = f"ai:document:{uuid.uuid4().hex}"
+
+    first = build_app().state.orchestration.services.lifecycle
+    first.replace_current(logical_key, [old_id], "generation-a", "job-a")
+
+    restarted = build_app().state.orchestration.services.lifecycle
+    assert restarted.current_ids(logical_key) == (old_id,)
+
+    replacement = restarted.replace_current(
+        logical_key, [new_id], "generation-b", "job-b"
+    )
+
+    assert replacement.superseded == (old_id,)
+    assert restarted.current_ids(logical_key) == (new_id,)
+    assert restarted.is_current(old_id) is False
+    assert restarted.is_current(new_id) is True
 
 
 def test_the_embedding_model_is_not_loaded_during_assembly(build_app):
