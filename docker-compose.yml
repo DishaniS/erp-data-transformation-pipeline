@@ -1,0 +1,72 @@
+name: erp-data-transformation
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: erp_ai_native_db
+      POSTGRES_USER: erp_pipeline
+      POSTGRES_PASSWORD: ${PIPELINE_DB_PASSWORD:?Set PIPELINE_DB_PASSWORD in .env.compose}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp_pipeline -d erp_ai_native_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - pipeline-postgres:/var/lib/postgresql/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    restart: unless-stopped
+    volumes:
+      - pipeline-qdrant:/qdrant/storage
+
+  erp-data-transformation-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      PIPELINE_DB_HOST: postgres
+      PIPELINE_DB_PORT: "5432"
+      PIPELINE_DB_NAME: erp_ai_native_db
+      PIPELINE_DB_USER: erp_pipeline
+      PIPELINE_DB_PASSWORD: ${PIPELINE_DB_PASSWORD:?Set PIPELINE_DB_PASSWORD in .env.compose}
+      ERP_API_HOST: 0.0.0.0
+      ERP_API_PORT: "8000"
+      ERP_API_KEY: ${ERP_API_KEY:?Set ERP_API_KEY in .env.compose}
+      ERP_API_PROTECT_READS: "true"
+      ERP_API_CORS_ORIGINS: ""
+      ERP_API_MAX_UPLOAD_BYTES: "67108864"
+      ERP_API_UPLOAD_DIR: /var/lib/erp-pipeline/uploads
+      ERP_BOOTSTRAP_ON_STARTUP: "true"
+      ERP_QDRANT_ENABLED: "true"
+      ERP_QDRANT_MODE: local
+      ERP_QDRANT_HOST: qdrant
+      ERP_QDRANT_PORT: "6333"
+      ERP_QDRANT_HOT_COLLECTION: erp_vectors_hot
+      ERP_QDRANT_WARM_COLLECTION: erp_vectors_warm
+      ERP_QDRANT_DIMENSION: "384"
+      ERP_QDRANT_TIMEOUT_SECONDS: "60"
+      ERP_STORAGE_HOT_LOCATION: on_premises
+      ERP_STORAGE_WARM_LOCATION: on_premises
+      ERP_COLD_ENABLED: "false"
+      ERP_EMBEDDING_ENABLED: "true"
+      ERP_FILTER_TOKEN_KEY: ${ERP_FILTER_TOKEN_KEY:?Set ERP_FILTER_TOKEN_KEY in .env.compose}
+      ERP_EXECUTOR_WORKERS: "2"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - pipeline-uploads:/var/lib/erp-pipeline/uploads
+
+volumes:
+  pipeline-postgres:
+  pipeline-qdrant:
+  pipeline-uploads:
+
