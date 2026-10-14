@@ -7,6 +7,13 @@
 **Audit type:** READ-ONLY. No code was modified, deleted, moved, formatted or generated. Nothing was deployed.
 **Source of truth:** the current working tree. Existing documentation was *not* trusted; every statement below was verified against code, generated OpenAPI, or a live probe.
 
+> **Implementation update (2026-10-14):** Finding 2 is resolved in the current
+> working tree. Production now wires a transactionally serialized
+> `PostgresLifecycleRegistry`, and the live runtime suite includes a
+> restart-and-replacement proof. Finding 1 was removed from the working tree and
+> added to `.gitignore`; the historical credential must still be revoked and
+> rotated because ordinary file deletion does not remove it from Git history.
+
 ---
 
 ## 1. EXECUTIVE SUMMARY

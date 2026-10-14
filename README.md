@@ -381,11 +381,30 @@ The file API has a default 64 MiB upload cap. Backend suffixes are `.csv`, `.tsv
 
 | Method | Endpoint | Purpose | Authentication |
 |---|---|---|---|
+| `GET` | `/v1/search` | Discover source/entity/filter metadata when called bare; otherwise perform scoped semantic or exact filtered retrieval | API key when configured |
+| `GET` | `/v1/retrieve` | Agent-ready scoped retrieval with batch-resolved text, a total character budget, and exact-ID lookup without embedding | API key when configured |
 | `POST` | `/v1/search` | Embed a query and retrieve hot/warm, optionally rehydrated cold, matches. Supports equality `filters`; each hit carries a resolvable `canonical_record_id` | Mutating-route key |
 | `POST` | `/v1/responses/adapt` | Transform an already-executed ERP API response into LLM-ready context. Does not call any ERP system. Returns 200 with `partial: true` when part of the response could not be adapted | Mutating-route key |
 | `GET` | `/v1/records/{record_id}` | Return canonical business data without vectors/credentials | Optional read protection |
 
 Search returns retrieved records and scores, not an LLM-generated answer. Vectors are not returned by either retrieval endpoint.
+
+`GET /v1/retrieve` requires `source_system_id`, `source_entity`, and either `q`
+or `record_key`. Optional `document_type` and `content_kind` further restrict
+the evidence. `record_key` without `q` performs an exact lookup with no model
+inference; `q` enables semantic ranking with a configurable `min_score`.
+`limit` is capped at 20 and `max_text_chars` caps the combined text across all
+hits at 24,000 characters. Each hit reports whether text exists and whether it
+was truncated. Search resolves candidate vector state through one indexed
+PostgreSQL `vector_id IN (...)` query, then resolves text with one batched
+primary-key read. Orphan vectors and superseded versions are excluded.
+
+For separately deployed ERPBridge integration, bind each read tool to this
+service's absolute HTTPS origin and `X-API-Key` credential reference. The
+workflow engine includes reviewed manifests and an apply/readback helper under
+`ops/erpbridge/manifests/data-transformation` and
+`backend-ts/scripts/pipeline-bridge-tools.mjs`; the bridge's main ERP URL does
+not need to change.
 
 ## Main System Workflows
 
