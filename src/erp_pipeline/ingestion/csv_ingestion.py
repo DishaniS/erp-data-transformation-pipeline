@@ -258,8 +258,9 @@ def iter_source_rows(
 
     Lazy and bounded: one physical row is held at a time, so a multi-gigabyte
     CSV is processed with a flat memory profile. Values are the source's own
-    strings, unconverted - the whole point of this iterator is to hand a later
-    mapping phase the data it needs to transform.
+    strings, except that record separators embedded in quoted fields use the
+    platform-independent ``\n`` representation. The whole point of this
+    iterator is to hand a later mapping phase the data it needs to transform.
 
     ``field_names`` are the deduplicated normalized names, so a row dictionary
     from a file with duplicate headers still has one entry per physical column.
@@ -308,7 +309,16 @@ def iter_source_rows(
 
                 for index, name in enumerate(field_names):
                     if index < len(values):
-                        mapped[name] = values[index]
+                        # csv.reader preserves embedded CRLF from Windows
+                        # files when the handle is correctly opened with
+                        # newline="". Canonicalize only those record
+                        # separators so downstream values do not depend on
+                        # the host checkout's line-ending convention.
+                        mapped[name] = (
+                            values[index]
+                            .replace("\r\n", "\n")
+                            .replace("\r", "\n")
+                        )
                     else:
                         mapped[name] = None
                         missing.append(name)

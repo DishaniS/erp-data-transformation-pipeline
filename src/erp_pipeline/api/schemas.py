@@ -477,6 +477,19 @@ class SearchResponse(BaseModel):
     took_ms: float | None = None
 
 
+class RetrievalHitResponse(SearchHitResponse):
+    text: str | None = None
+    text_truncated: bool = False
+    text_available: bool = False
+
+
+class RetrievalResponse(SearchResponse):
+    hits: Sequence[RetrievalHitResponse] = ()
+    retrieval_mode: str
+    text_chars_returned: int = 0
+    max_text_chars: int
+
+
 class AvailableSearchFieldResponse(BaseModel):
     """One field of one discovered entity, as ``GET /v1/search`` reports it
     when called with no query.

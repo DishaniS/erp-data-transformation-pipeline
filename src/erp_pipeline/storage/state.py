@@ -62,6 +62,11 @@ class TierStateStore(Protocol):
     def load(self, representation_id: str) -> StorageRecordMetadata | None:
         ...  # pragma: no cover - protocol declaration
 
+    def load_many_by_vector_ids(
+        self, vector_ids: Sequence[str]
+    ) -> tuple[StorageRecordMetadata, ...]:
+        ...  # pragma: no cover - protocol declaration
+
     def save(
         self,
         metadata: StorageRecordMetadata,
@@ -107,6 +112,12 @@ class InMemoryTierStateStore:
 
     def load(self, representation_id: str) -> StorageRecordMetadata | None:
         return self._records.get(representation_id)
+
+    def load_many_by_vector_ids(
+        self, vector_ids: Sequence[str]
+    ) -> tuple[StorageRecordMetadata, ...]:
+        wanted = set(vector_ids)
+        return tuple(item for item in self._records.values() if item.vector_id in wanted)
 
     def save(
         self,
@@ -345,6 +356,13 @@ def create_state_record_identity_index_sql(
         "(source_system_id, source_entity, record_key, content_kind)"
     )
 
+
+def create_state_vector_index_sql(schema: str = STORAGE_SCHEMA_NAME) -> str:
+    return (
+        f"CREATE INDEX IF NOT EXISTS {STATE_TABLE}_vector_idx "
+        f"ON {_validate_schema(schema)}.{STATE_TABLE} (vector_id)"
+    )
+
 def create_transitions_sql(schema: str = STORAGE_SCHEMA_NAME) -> str:
     return f"""
 CREATE TABLE IF NOT EXISTS {_validate_schema(schema)}.{TRANSITIONS_TABLE} (
@@ -415,6 +433,7 @@ def bootstrap_storage_schema(
         connection.execute(text(create_state_filter_index_sql(schema)))
         connection.execute(text(create_state_identity_index_sql(schema)))
         connection.execute(text(create_state_record_identity_index_sql(schema)))
+        connection.execute(text(create_state_vector_index_sql(schema)))
         connection.execute(text(create_transitions_sql(schema)))
         connection.execute(text(create_transitions_index_sql(schema)))
         connection.execute(text(create_access_sql(schema)))
@@ -432,6 +451,22 @@ class PostgresTierStateStore:
         return self._schema
 
     # -- reads --
+
+    def load_many_by_vector_ids(
+        self, vector_ids: Sequence[str]
+    ) -> tuple[StorageRecordMetadata, ...]:
+        """One indexed query for the bounded candidate set; no corpus scan."""
+        from sqlalchemy import bindparam, text
+
+        wanted = list(dict.fromkeys(vector_ids))
+        if not wanted:
+            return ()
+        statement = text(
+            f"SELECT * FROM {self._schema}.{STATE_TABLE} WHERE vector_id IN :ids"
+        ).bindparams(bindparam("ids", expanding=True))
+        with self._engine.connect() as connection:
+            rows = connection.execute(statement, {"ids": wanted}).mappings().all()
+        return tuple(_row_to_metadata(row) for row in rows)
 
     def load(self, representation_id: str) -> StorageRecordMetadata | None:
         from sqlalchemy import text

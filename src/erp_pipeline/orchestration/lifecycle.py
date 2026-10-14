@@ -391,6 +391,290 @@ class InMemoryLifecycleRegistry:
         return True
 
 
+class PostgresLifecycleRegistry:
+    """Durable lifecycle registry with the in-memory reference semantics.
+
+    Every replacement for one logical slot is serialized with a transaction-
+    scoped advisory lock. This prevents two workers from both observing the
+    same old current set and publishing conflicting replacements.
+    """
+
+    def __init__(self, engine: Any, schema: str = LIFECYCLE_SCHEMA_NAME) -> None:
+        self._engine = engine
+        self._schema = _validate_schema(schema)
+
+    @property
+    def schema(self) -> str:
+        return self._schema
+
+    def current_ids(self, logical_key: str) -> tuple[str, ...]:
+        from sqlalchemy import text
+
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    f"SELECT representation_id FROM {self._schema}.{LIFECYCLE_TABLE} "
+                    "WHERE logical_key = :logical_key AND is_current = TRUE "
+                    "ORDER BY representation_id"
+                ),
+                {"logical_key": logical_key},
+            ).all()
+
+        return tuple(row[0] for row in rows)
+
+    def current_generation(self, logical_key: str) -> str | None:
+        from sqlalchemy import text
+
+        with self._engine.connect() as connection:
+            return connection.execute(
+                text(
+                    f"SELECT generation FROM {self._schema}.{LIFECYCLE_TABLE} "
+                    "WHERE logical_key = :logical_key AND is_current = TRUE "
+                    "ORDER BY created_at DESC, representation_id LIMIT 1"
+                ),
+                {"logical_key": logical_key},
+            ).scalar()
+
+    def is_current(self, representation_id: str) -> bool | None:
+        from sqlalchemy import text
+
+        with self._engine.connect() as connection:
+            value = connection.execute(
+                text(
+                    f"SELECT BOOL_OR(is_current) FROM {self._schema}.{LIFECYCLE_TABLE} "
+                    "WHERE representation_id = :representation_id"
+                ),
+                {"representation_id": representation_id},
+            ).scalar()
+
+        return None if value is None else bool(value)
+
+    def pending_cleanup(self, limit: int = 100) -> tuple[LifecycleEntry, ...]:
+        from sqlalchemy import text
+
+        bounded = max(0, min(int(limit), 10_000))
+
+        if bounded == 0:
+            return ()
+
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    f"SELECT * FROM {self._schema}.{LIFECYCLE_TABLE} "
+                    "WHERE cleanup_pending = TRUE "
+                    "ORDER BY superseded_at, logical_key, representation_id "
+                    "LIMIT :limit"
+                ),
+                {"limit": bounded},
+            ).mappings().all()
+
+        return tuple(_to_lifecycle_entry(row) for row in rows)
+
+    def entries_for(self, logical_key: str) -> tuple[LifecycleEntry, ...]:
+        from sqlalchemy import text
+
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    f"SELECT * FROM {self._schema}.{LIFECYCLE_TABLE} "
+                    "WHERE logical_key = :logical_key "
+                    "ORDER BY representation_id"
+                ),
+                {"logical_key": logical_key},
+            ).mappings().all()
+
+        return tuple(_to_lifecycle_entry(row) for row in rows)
+
+    def count(self) -> int:
+        from sqlalchemy import text
+
+        with self._engine.connect() as connection:
+            return int(
+                connection.execute(
+                    text(
+                        f"SELECT COUNT(*) FROM {self._schema}.{LIFECYCLE_TABLE}"
+                    )
+                ).scalar()
+                or 0
+            )
+
+    def replace_current(
+        self,
+        logical_key: str,
+        representation_ids: Sequence[str],
+        generation: str,
+        sync_run_id: str | None = None,
+        now: datetime | None = None,
+    ) -> ReplacementResult:
+        from sqlalchemy import text
+
+        moment = now or datetime.now(timezone.utc)
+        incoming = tuple(sorted(set(representation_ids)))
+
+        with self._engine.begin() as connection:
+            self._lock_slot(connection, logical_key)
+            current = {
+                row[0]
+                for row in connection.execute(
+                    text(
+                        f"SELECT representation_id FROM {self._schema}."
+                        f"{LIFECYCLE_TABLE} "
+                        "WHERE logical_key = :logical_key AND is_current = TRUE"
+                    ),
+                    {"logical_key": logical_key},
+                ).all()
+            }
+            incoming_set = set(incoming)
+
+            if incoming_set == current and current:
+                return ReplacementResult(
+                    logical_key=logical_key,
+                    generation=generation,
+                    unchanged=True,
+                )
+
+            superseded = tuple(sorted(current - incoming_set))
+
+            if superseded:
+                statement = text(
+                    f"UPDATE {self._schema}.{LIFECYCLE_TABLE} SET "
+                    "is_current = FALSE, cleanup_pending = TRUE, "
+                    "superseded_at = :superseded_at, superseded_by = :superseded_by "
+                    "WHERE logical_key = :logical_key "
+                    "AND representation_id = :representation_id AND is_current = TRUE"
+                )
+                connection.execute(
+                    statement,
+                    [
+                        {
+                            "logical_key": logical_key,
+                            "representation_id": representation_id,
+                            "superseded_at": moment,
+                            "superseded_by": generation,
+                        }
+                        for representation_id in superseded
+                    ],
+                )
+
+            if incoming:
+                statement = text(
+                    f"""
+                    INSERT INTO {self._schema}.{LIFECYCLE_TABLE} (
+                        logical_key, representation_id, generation, is_current,
+                        cleanup_pending, superseded_by, sync_run_id,
+                        created_at, superseded_at
+                    ) VALUES (
+                        :logical_key, :representation_id, :generation, TRUE,
+                        FALSE, NULL, :sync_run_id, :created_at, NULL
+                    )
+                    ON CONFLICT (logical_key, representation_id) DO UPDATE SET
+                        generation = EXCLUDED.generation,
+                        is_current = TRUE,
+                        cleanup_pending = FALSE,
+                        superseded_by = NULL,
+                        sync_run_id = EXCLUDED.sync_run_id,
+                        superseded_at = NULL
+                    """
+                )
+                connection.execute(
+                    statement,
+                    [
+                        {
+                            "logical_key": logical_key,
+                            "representation_id": representation_id,
+                            "generation": generation,
+                            "sync_run_id": sync_run_id,
+                            "created_at": moment,
+                        }
+                        for representation_id in incoming
+                    ],
+                )
+
+        return ReplacementResult(
+            logical_key=logical_key,
+            generation=generation,
+            promoted=incoming,
+            superseded=superseded,
+        )
+
+    def retire_slot(
+        self, logical_key: str, now: datetime | None = None
+    ) -> tuple[str, ...]:
+        from sqlalchemy import text
+
+        moment = now or datetime.now(timezone.utc)
+
+        with self._engine.begin() as connection:
+            self._lock_slot(connection, logical_key)
+            retired = tuple(
+                sorted(
+                    row[0]
+                    for row in connection.execute(
+                        text(
+                            f"SELECT representation_id FROM {self._schema}."
+                            f"{LIFECYCLE_TABLE} "
+                            "WHERE logical_key = :logical_key AND is_current = TRUE"
+                        ),
+                        {"logical_key": logical_key},
+                    ).all()
+                )
+            )
+            connection.execute(
+                text(
+                    f"UPDATE {self._schema}.{LIFECYCLE_TABLE} SET "
+                    "is_current = FALSE, cleanup_pending = TRUE, "
+                    "superseded_at = :superseded_at, superseded_by = NULL "
+                    "WHERE logical_key = :logical_key AND is_current = TRUE"
+                ),
+                {"logical_key": logical_key, "superseded_at": moment},
+            )
+
+        return retired
+
+    def mark_cleaned(self, logical_key: str, representation_id: str) -> bool:
+        from sqlalchemy import text
+
+        with self._engine.begin() as connection:
+            result = connection.execute(
+                text(
+                    f"UPDATE {self._schema}.{LIFECYCLE_TABLE} "
+                    "SET cleanup_pending = FALSE "
+                    "WHERE logical_key = :logical_key "
+                    "AND representation_id = :representation_id "
+                    "AND cleanup_pending = TRUE"
+                ),
+                {
+                    "logical_key": logical_key,
+                    "representation_id": representation_id,
+                },
+            )
+
+        return bool(result.rowcount)
+
+    @staticmethod
+    def _lock_slot(connection: Any, logical_key: str) -> None:
+        from sqlalchemy import text
+
+        connection.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:logical_key, 0))"),
+            {"logical_key": logical_key},
+        )
+
+
+def _to_lifecycle_entry(row: Mapping[str, Any]) -> LifecycleEntry:
+    return LifecycleEntry(
+        logical_key=row["logical_key"],
+        representation_id=row["representation_id"],
+        generation=row["generation"],
+        is_current=bool(row["is_current"]),
+        created_at=row["created_at"],
+        superseded_at=row["superseded_at"],
+        superseded_by=row["superseded_by"],
+        sync_run_id=row["sync_run_id"],
+        cleanup_pending=bool(row["cleanup_pending"]),
+    )
+
+
 def group_by_slot(
     representations: Iterable[Any],
 ) -> dict[str, list[Any]]:
@@ -420,6 +704,7 @@ __all__ = [
     "SLOT_RECORD",
     "SLOT_SCHEMA",
     "InMemoryLifecycleRegistry",
+    "PostgresLifecycleRegistry",
     "LifecycleEntry",
     "ReplacementResult",
     "bootstrap_lifecycle_schema",

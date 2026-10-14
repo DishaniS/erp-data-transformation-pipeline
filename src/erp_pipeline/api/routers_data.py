@@ -35,6 +35,8 @@ from erp_pipeline.api.schemas import (
     MappingValidationResponse,
     RecordResponse,
     RepresentationResponse,
+    RetrievalHitResponse,
+    RetrievalResponse,
     SchemaResponse,
     SearchHitResponse,
     SearchMetadataResponse,
@@ -1317,6 +1319,61 @@ def search_get(
         service,
         allowed_fields=allowed_fields,
     )
+
+
+@search_router.get("/retrieve", response_model=RetrievalResponse, operation_id="retrieveIndexedData")
+def retrieve_indexed_data(
+    source_system_id: str = Query(min_length=1, max_length=256),
+    source_entity: str = Query(min_length=1, max_length=256),
+    q: str | None = Query(default=None, min_length=1, max_length=2000),
+    record_key: str | None = Query(default=None, min_length=1, max_length=256),
+    document_type: str | None = Query(default=None, min_length=1, max_length=256),
+    content_kind: str | None = Query(default=None),
+    limit: int = Query(default=5, ge=1, le=20),
+    min_score: float = Query(default=0.2, ge=-1, le=1),
+    max_text_chars: int = Query(default=12000, ge=1, le=24000),
+    service: OrchestrationService = Depends(get_service),
+) -> RetrievalResponse:
+    """One scoped read for an agent: exact/semantic hits plus bounded text.
+
+    Exact IDs avoid model inference. Text is batch-loaded only after scoped,
+    current-version filtering, so a wrong person is never expanded as context.
+    The response budget applies across all hits, not independently per chunk.
+    """
+    if not q and not record_key:
+        raise InvalidPipelineRequestError("q or record_key is required for retrieval")
+    services = service.services
+    if services.representations is None:
+        raise InvalidPipelineRequestError("retrieval needs a representation store")
+    started = time.perf_counter()
+    filters = {"source_system_id": source_system_id, "source_entity": source_entity}
+    for name, value in (("record_key", record_key), ("document_type", document_type),
+                        ("content_kind", content_kind)):
+        if value is not None:
+            filters[name] = value
+    if q:
+        result = _execute_search(SearchRequest(query=q, top_k=limit, filters=filters), service)
+        candidates = [hit for hit in result.hits if hit.score >= min_score]
+    else:
+        result = _execute_filter_only_search(filters, service, allowed_fields=(), limit=limit)
+        candidates = list(result.hits)
+    representations = services.representations.get_many(
+        [hit.representation_id for hit in candidates]
+    )
+    remaining = max_text_chars
+    hits = []
+    for hit in candidates:
+        representation = representations.get(hit.representation_id)
+        text = getattr(representation, "text_for_ai", None)
+        rendered = text[:remaining] if text is not None else None
+        remaining -= len(rendered or "")
+        hits.append(RetrievalHitResponse(**hit.model_dump(), text=rendered,
+            text_available=text is not None,
+            text_truncated=text is not None and len(rendered) < len(text)))
+    body = result.model_dump(exclude={"hits", "took_ms"})
+    return RetrievalResponse(**body, hits=hits, retrieval_mode="semantic" if q else "exact",
+        max_text_chars=max_text_chars, text_chars_returned=max_text_chars - remaining,
+        took_ms=round((time.perf_counter() - started) * 1000, 3))
 
 
 @search_router.post(

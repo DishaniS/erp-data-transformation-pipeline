@@ -38,7 +38,7 @@ PUBLIC_PATHS = (
 #: Search used to be POST and was therefore protected whenever API-key auth
 #: was enabled. Keep that security boundary when the read-only GET route is
 #: used, even in deployments that otherwise permit unauthenticated browsing.
-SENSITIVE_READ_PATHS = ("/v1/search",)
+SENSITIVE_READ_PATHS = ("/v1/search", "/v1/retrieve")
 
 
 def keys_match(supplied: str | None, configured: str | None) -> bool:

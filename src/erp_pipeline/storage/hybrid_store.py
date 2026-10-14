@@ -80,8 +80,8 @@ class SearchHit:
     #: HIT. Deliberately excluded from ``to_dict()``: it is an internal
     #: reference, not part of the wire shape.
     #:
-    #: ``None`` means no state row was found - the hit is reported with what
-    #: the tier itself knew rather than being dropped.
+    #: Merged hits always carry authoritative state. Orphan vectors are
+    #: excluded before they reach an API caller.
     state: Any = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -515,6 +515,9 @@ class HybridVectorStore:
         started = time.monotonic()
         raw: list[SearchHit] = []
         searched: list[StorageTier] = []
+        # Leave bounded room for stale/orphan candidates rejected against the
+        # authoritative state, instead of letting them consume the whole top-k.
+        candidate_limit = min(max(limit, limit * 4), 400)
 
         for tier in (StorageTier.HOT, StorageTier.WARM):
             backend = {
@@ -536,7 +539,7 @@ class HybridVectorStore:
 
             searched.append(tier)
 
-            for vector_id, score in _tier_search(backend, vector, limit, query_filter):
+            for vector_id, score in _tier_search(backend, vector, candidate_limit, query_filter):
                 raw.append(
                     SearchHit(
                         representation_id=None,
@@ -602,6 +605,7 @@ class HybridVectorStore:
         started = time.monotonic()
         raw: list[SearchHit] = []
         searched: list[StorageTier] = []
+        candidate_limit = min(max(limit, limit * 4), 400)
 
         for tier in (StorageTier.HOT, StorageTier.WARM):
             backend = {
@@ -621,7 +625,7 @@ class HybridVectorStore:
 
             searched.append(tier)
 
-            for vector_id, _payload in _tier_fetch(backend, query_filter, limit):
+            for vector_id, _payload in _tier_fetch(backend, query_filter, candidate_limit):
                 raw.append(
                     SearchHit(
                         representation_id=None,
@@ -671,6 +675,11 @@ class HybridVectorStore:
 
         for hit in raw:
             metadata = state.get(hit.vector_id)
+
+            # A physical vector without authoritative state cannot establish
+            # identity, scope, or current-version status. Never return it.
+            if metadata is None:
+                continue
 
             if metadata is not None and not resolved_filters.matches(metadata):
                 continue
@@ -731,8 +740,7 @@ class HybridVectorStore:
         """
         return {
             metadata.vector_id: metadata
-            for metadata in self._state.list_all()
-            if metadata.vector_id in vector_ids
+            for metadata in self._state.load_many_by_vector_ids(sorted(vector_ids))
         }
 
     def _search_cold(

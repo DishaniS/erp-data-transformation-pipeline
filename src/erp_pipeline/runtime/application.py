@@ -68,7 +68,7 @@ def create_production_app(
 
     LOGGER.info(
         "application assembled: jobs=PostgresJobStore records=Postgres "
-        "tier_state=Postgres sources=Postgres uploads=Postgres "
+        "lifecycle=Postgres tier_state=Postgres sources=Postgres uploads=Postgres "
         "secrets=EnvironmentSecretProvider"
     )
 

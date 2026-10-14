@@ -114,6 +114,7 @@ from erp_pipeline.orchestration.representation_store import (
 )
 from erp_pipeline.orchestration.lifecycle import (
     InMemoryLifecycleRegistry,
+    PostgresLifecycleRegistry,
     bootstrap_lifecycle_schema,
     logical_key_for,
 )
@@ -204,6 +205,7 @@ __all__ = [
     "PostgresCanonicalRecordStore",
     "InMemoryRepresentationStore",
     "InMemoryLifecycleRegistry",
+    "PostgresLifecycleRegistry",
     "bootstrap_lifecycle_schema",
     "logical_key_for",
     "ScheduledSource",

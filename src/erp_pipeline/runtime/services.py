@@ -212,6 +212,7 @@ def build_production_services(
         EnvironmentSecretProvider,
         PipelineServices,
         PostgresCanonicalRecordStore,
+        PostgresLifecycleRegistry,
         PostgresRepresentationStore,
     )
     from erp_pipeline.runtime.database import build_pipeline_engine
@@ -235,6 +236,7 @@ def build_production_services(
         # -- durable stores --
         records=PostgresCanonicalRecordStore(active_engine),
         representations=PostgresRepresentationStore(active_engine),
+        lifecycle=PostgresLifecycleRegistry(active_engine),
         sources=PostgresSourceRegistry(active_engine),
         uploads=PostgresUploadStore(
             resolved.api.upload_dir,
