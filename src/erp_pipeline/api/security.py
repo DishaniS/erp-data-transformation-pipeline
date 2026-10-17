@@ -65,6 +65,9 @@ def requires_key(method: str, path: str, protect_reads: bool) -> bool:
     if path in SENSITIVE_READ_PATHS:
         return True
 
+    if path.startswith("/v1/library/"):
+        return True
+
     return protect_reads
 
 

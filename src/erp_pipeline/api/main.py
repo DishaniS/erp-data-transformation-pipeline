@@ -236,6 +236,8 @@ def create_app(
     ):
         app.include_router(router)
 
+    from erp_pipeline.api.routers_library import library_router
+    app.include_router(library_router)
     _describe_api_key_security(app, resolved)
 
     return app

@@ -59,6 +59,7 @@ services:
       ERP_COLD_ENABLED: "false"
       ERP_EMBEDDING_ENABLED: "true"
       ERP_FILTER_TOKEN_KEY: ${ERP_FILTER_TOKEN_KEY:?Set ERP_FILTER_TOKEN_KEY in .env.compose}
+      ERP_REPRESENTATION_ENCRYPTION_KEY: ${ERP_REPRESENTATION_ENCRYPTION_KEY:?Set a base64 AES-256 representation key in .env.compose}
       ERP_EXECUTOR_WORKERS: "2"
     ports:
       - "127.0.0.1:8000:8000"

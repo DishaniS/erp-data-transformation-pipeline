@@ -191,6 +191,30 @@
         "title": "AvailableSearchFieldResponse",
         "type": "object"
       },
+      "Body_stageChatDocument": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "session_id",
+          "idempotency_key"
+        ],
+        "title": "Body_stageChatDocument",
+        "type": "object"
+      },
       "Body_uploadCsv": {
         "properties": {
           "file": {
@@ -1203,6 +1227,70 @@
         "title": "JobType",
         "type": "string"
       },
+      "LibraryDiscover": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Access Token",
+            "type": "string"
+          }
+        },
+        "title": "LibraryDiscover",
+        "type": "object"
+      },
+      "LibraryResolve": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Access Token",
+            "type": "string"
+          },
+          "document_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Document Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ],
+        "title": "LibraryResolve",
+        "type": "object"
+      },
+      "LibrarySearch": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Access Token",
+            "type": "string"
+          },
+          "limit": {
+            "default": 10,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "LibrarySearch",
+        "type": "object"
+      },
       "MappingOverrideRequest": {
         "properties": {
           "action": {
@@ -2120,6 +2208,220 @@
           "url"
         ],
         "title": "ResponseAssetReference",
+        "type": "object"
+      },
+      "RetrievalHitResponse": {
+        "properties": {
+          "canonical_record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Record Id"
+          },
+          "content_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Kind"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Id"
+          },
+          "record_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Key"
+          },
+          "representation_id": {
+            "title": "Representation Id",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "source_entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Entity"
+          },
+          "source_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source System Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "text_available": {
+            "default": false,
+            "title": "Text Available",
+            "type": "boolean"
+          },
+          "text_truncated": {
+            "default": false,
+            "title": "Text Truncated",
+            "type": "boolean"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "representation_id",
+          "score",
+          "tier"
+        ],
+        "title": "RetrievalHitResponse",
+        "type": "object"
+      },
+      "RetrievalResponse": {
+        "properties": {
+          "deep_search_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deep Search Note"
+          },
+          "deep_search_used": {
+            "default": false,
+            "title": "Deep Search Used",
+            "type": "boolean"
+          },
+          "dimension": {
+            "title": "Dimension",
+            "type": "integer"
+          },
+          "filters_applied": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Filters Applied",
+            "type": "object"
+          },
+          "hits": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RetrievalHitResponse"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "include_cold": {
+            "default": false,
+            "title": "Include Cold",
+            "type": "boolean"
+          },
+          "max_text_chars": {
+            "title": "Max Text Chars",
+            "type": "integer"
+          },
+          "query_model": {
+            "title": "Query Model",
+            "type": "string"
+          },
+          "retrieval_mode": {
+            "title": "Retrieval Mode",
+            "type": "string"
+          },
+          "text_chars_returned": {
+            "default": 0,
+            "title": "Text Chars Returned",
+            "type": "integer"
+          },
+          "tiers_searched": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tiers Searched",
+            "type": "array"
+          },
+          "took_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Took Ms"
+          }
+        },
+        "required": [
+          "query_model",
+          "dimension",
+          "retrieval_mode",
+          "max_text_chars"
+        ],
+        "title": "RetrievalResponse",
         "type": "object"
       },
       "SchemaEntityResponse": {
@@ -3613,6 +3915,524 @@
         ]
       }
     },
+    "/v1/library/catalog": {
+      "get": {
+        "operationId": "documentWorkspaceCatalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Catalog",
+        "tags": [
+          "document-workspace"
+        ]
+      },
+      "post": {
+        "operationId": "importDocumentWorkspaceSchema",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Schema",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/discover": {
+      "post": {
+        "operationId": "discoverPrivateDocumentCatalog",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryDiscover"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/inventory": {
+      "get": {
+        "operationId": "documentWorkspaceInventory",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Inventory",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/migrate": {
+      "post": {
+        "operationId": "migrateDocumentCollection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Migrate",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/resolve": {
+      "post": {
+        "operationId": "resolvePrivateDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryResolve"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/search": {
+      "post": {
+        "operationId": "searchPrivateDocuments",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibrarySearch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/uploads": {
+      "get": {
+        "operationId": "listChatDocumentUploads",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Uploads",
+        "tags": [
+          "document-workspace"
+        ]
+      },
+      "post": {
+        "operationId": "stageChatDocument",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_stageChatDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stage",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/uploads/{upload_id}": {
+      "get": {
+        "operationId": "getChatDocumentUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_text",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Text",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Upload",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/uploads/{upload_id}/confirm": {
+      "post": {
+        "operationId": "confirmChatDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/uploads/{upload_id}/proposal": {
+      "post": {
+        "operationId": "saveChatDocumentProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
+    "/v1/library/uploads/{upload_id}/recover": {
+      "post": {
+        "operationId": "recoverInterruptedChatDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recover",
+        "tags": [
+          "document-workspace"
+        ]
+      }
+    },
     "/v1/mappings/suggest": {
       "post": {
         "description": "Generate a mapping through Phase 8. Ambiguous fields stay unapproved.",
@@ -3876,6 +4696,168 @@
         "summary": "Adapt Response",
         "tags": [
           "responses"
+        ]
+      }
+    },
+    "/v1/retrieve": {
+      "get": {
+        "description": "One scoped read for an agent: exact/semantic hits plus bounded text.\n\nExact IDs avoid model inference. Text is batch-loaded only after scoped,\ncurrent-version filtering, so a wrong person is never expanded as context.\nThe response budget applies across all hits, not independently per chunk.",
+        "operationId": "retrieveIndexedData",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source_system_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Source System Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_entity",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Source Entity",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "record_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Record Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "content_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_score",
+            "required": false,
+            "schema": {
+              "default": 0.2,
+              "maximum": 1,
+              "minimum": -1,
+              "title": "Min Score",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_text_chars",
+            "required": false,
+            "schema": {
+              "default": 12000,
+              "maximum": 24000,
+              "minimum": 1,
+              "title": "Max Text Chars",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retrieve Indexed Data",
+        "tags": [
+          "search"
         ]
       }
     },
