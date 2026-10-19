@@ -296,9 +296,13 @@ def extract_content(payload: bytes, suffix: str) -> tuple[str, list[str]]:
 
 class LibraryVectors:
     """Opaque references only; access and current versions are checked in SQL."""
-    def __init__(self, client: Any, embedding: Any, collection: str, restricted_allowed: bool = True):
+    def __init__(self, client: Any, embedding: Any, collection: str, restricted_allowed: bool = True, synthetic_workspaces: frozenset[str] = frozenset()):
         self.client, self.embedding, self.collection = client, embedding, collection
         self.restricted_allowed = restricted_allowed
+        self.synthetic_workspaces = synthetic_workspaces
+
+    def requires_synthetic_confirmation(self, scope: dict) -> bool:
+        return not self.restricted_allowed and scope["workspaceId"] in self.synthetic_workspaces
 
     def _embed(self, text: str, identifier: str) -> list[float]:
         from erp_pipeline.sync.propagation import AIRepresentation
@@ -309,7 +313,9 @@ class LibraryVectors:
 
     def index(self, scope: dict, upload: dict, document: dict, text: str):
         from qdrant_client import models as models
-        if document["sensitivity"] == "restricted" and not self.restricted_allowed:
+        if document["sensitivity"] == "restricted" and not self.restricted_allowed and not (
+            self.requires_synthetic_confirmation(scope) and document.get("synthetic_source_confirmed") is True
+        ):
             refuse(409, "STORAGE_POLICY_DENIED", "Restricted documents require an approved on-premises vector location.")
         chunks = [text[start:start + 1000] for start in range(0, len(text), 850)]
         if not chunks:
@@ -370,6 +376,7 @@ class DocumentWorkspace:
     def __init__(self, store: WorkspaceStore, vectors: LibraryVectors | None = None):
         self.store, self.vectors = store, vectors
         self.lock = threading.RLock()
+        self.extraction_slots = threading.BoundedSemaphore(2)
 
     def writable(self, scope: dict, manage: bool = False):
         if scope["readOnly"] or not scope["canManage" if manage else "canUpload"]:
@@ -398,6 +405,7 @@ class DocumentWorkspace:
                 route.update(document_types=types, accepts_uploads=bool(types), description=("Restricted, owner-only documents" if restricted else "Reviewed entity documents; sharing requires explicit schema-role consent"),
                     searchable_documents=len(current), document_type_counts={kind: sum(doc["document_type"] == kind for doc in current) for kind in sorted({doc["document_type"] for doc in current})},
                     last_document_update=max((doc["updated_at"] for doc in current), default=None), provisioning="created on first successful index; zero permitted documents does not prove physical absence")
+                route["requires_synthetic_confirmation"] = bool(restricted and self.vectors and getattr(self.vectors, "requires_synthetic_confirmation", lambda _: False)(scope))
                 routes.append(route)
                 collections.append(route)
             entities.append({**schema, "collection_routes": routes})
@@ -417,11 +425,17 @@ class DocumentWorkspace:
             refuse(409, "SCHEMA_REVISION_CONFLICT", "Review the current schema revision before replacing it.")
         return self.store.put(scope["workspaceId"], {**schema, "id": identifier, "kind": "schema", "owner_id": scope["actorId"], "created_at": current["created_at"] if current else timestamp()}, expected=current["revision"] if current else None)
 
-    def stage(self, scope: dict, filename: str, data: bytes, session_id: str, key: str) -> dict:
+    def stage(self, scope: dict, filename: str, data: bytes, session_id: str, key: str, defer_extraction: bool = False) -> dict:
         self.writable(scope)
         if not 8 <= len(key) <= 128 or not IDENTIFIER.fullmatch(session_id):
             refuse(422, "UPLOAD_REQUEST_INVALID", "A conversation and bounded idempotency key are required.")
         suffix = Path(filename.replace("\\", "/")).suffix.lower()
+        if not data:
+            refuse(422, "FILE_EMPTY", "Choose a file containing data.")
+        if len(data) > MAX_FILE_BYTES:
+            refuse(413, "FILE_TOO_LARGE", "The attachment limit is 16 MiB.")
+        if suffix not in SUPPORTED_SUFFIXES:
+            refuse(415, "FILE_UNSUPPORTED", "This file type is not supported.")
         digest = hashlib.sha256(data).hexdigest()
         identifier = "upload_" + hashlib.sha256(f"{scope['workspaceId']}:{scope['actorId']}:{key}".encode()).hexdigest()[:40]
         current = self.store.get(scope["workspaceId"], identifier)
@@ -430,10 +444,11 @@ class DocumentWorkspace:
             if current["content_hash"] != digest or current["session_id"] != session_id:
                 refuse(409, "UPLOAD_KEY_CONFLICT", "The upload key was already used for another file or conversation.")
             return self.public_upload(current)
-        text, warnings = extract_content(data, suffix)
+        text, warnings = ("", []) if defer_extraction else extract_content(data, suffix)
         safe_name = re.sub(r"[\x00-\x1f]", "_", filename.replace("\\", "/").rsplit("/", 1)[-1])[:120]
         entry = dict(id=identifier, kind="upload", owner_id=scope["actorId"], session_id=session_id, filename=safe_name, content_hash=digest, size_bytes=len(data), text=text,
-            status="REVIEW" if text.strip() else "NEEDS_TEXT", warnings=warnings, created_at=timestamp())
+            status="EXTRACTING" if defer_extraction else "REVIEW" if text.strip() else "NEEDS_TEXT", warnings=warnings, created_at=timestamp(),
+            **({"extraction_state": "QUEUED"} if defer_extraction else {}))
         try:
             with self.store.engine.begin() as connection:
                 self.store.put(scope["workspaceId"], {"id": "blob_" + identifier, "kind": "blob", "owner_id": scope["actorId"], "file_base64": base64.b64encode(data).decode()}, connection=connection)
@@ -441,12 +456,78 @@ class DocumentWorkspace:
         except WorkspaceError as error:
             if error.status != 409:
                 raise
-            return self.stage(scope, filename, data, session_id, key)
+            return self.stage(scope, filename, data, session_id, key, defer_extraction)
         return self.public_upload(saved)
 
+    def complete_extraction(self, scope: dict, identifier: str) -> None:
+        # Saturated work stays durably QUEUED and can resume on status refresh.
+        # Do not start unbounded OCR threads on the small shared deployment.
+        if not self.extraction_slots.acquire(blocking=False):
+            return
+        try:
+            self._complete_extraction(scope, identifier)
+        finally:
+            self.extraction_slots.release()
+
+    def _complete_extraction(self, scope: dict, identifier: str) -> None:
+        """Resumable, revision-fenced OCR. Raw bytes are durable before enqueue.
+
+        A process restart cannot turn an unfinished extraction into reviewed data.
+        GET may resume a queued/stale attempt; a late worker cannot overwrite a
+        newer lease, model proposal, or confirmed attachment.
+        """
+        self.writable(scope)
+        with self.lock:
+            upload = self.owned(scope, identifier, "upload")
+            if upload["status"] != "EXTRACTING":
+                return
+            if upload.get("extraction_state") == "RUNNING" and time.time() - upload.get("extraction_started_at", time.time()) < 300:
+                return
+            run_id = uuid.uuid4().hex
+            try:
+                upload = self.store.put(scope["workspaceId"], {**upload, "extraction_state": "RUNNING",
+                    "extraction_run_id": run_id, "extraction_started_at": time.time()}, upload["revision"])
+            except WorkspaceError as error:
+                if error.status == 409:
+                    return
+                raise
+            blob = self.owned(scope, "blob_" + identifier, "blob")
+        try:
+            text, warnings = extract_content(base64.b64decode(blob["file_base64"], validate=True), Path(upload["filename"]).suffix.lower())
+            updates = {"text": text, "warnings": warnings, "status": "REVIEW" if text.strip() else "NEEDS_TEXT", "extraction_state": "SUCCEEDED", "error_code": None}
+        except Exception:
+            # Do not expose parser errors, source bytes, or filesystem details.
+            updates = {"status": "EXTRACTION_FAILED", "extraction_state": "FAILED", "error_code": "EXTRACTION_FAILED",
+                "warnings": ["Document extraction could not finish. Review the source or explicitly retry extraction."]}
+        for _ in range(3):
+            with self.lock:
+                current = self.owned(scope, identifier, "upload")
+                if current["status"] != "EXTRACTING" or current.get("extraction_run_id") != run_id:
+                    return
+                try:
+                    self.store.put(scope["workspaceId"], {**current, **updates}, current["revision"])
+                    return
+                except WorkspaceError as error:
+                    if error.status != 409:
+                        raise
+
+    def model_source(self, scope: dict, identifier: str) -> dict:
+        """Owner-scoped source for the trusted model adapter, never discovery."""
+        self.writable(scope)
+        upload = self.owned(scope, identifier, "upload")
+        if upload["size_bytes"] > 4 * 1024 * 1024:
+            refuse(413, "MODEL_SOURCE_TOO_LARGE", "Use extracted-text review for files larger than 4 MiB.")
+        blob = self.owned(scope, "blob_" + identifier, "blob")
+        data = base64.b64decode(blob["file_base64"], validate=True)
+        content_type = "image/png" if data.startswith(b"\x89PNG\r\n\x1a\n") else "image/jpeg" if data.startswith(b"\xff\xd8\xff") else "application/pdf" if data.startswith(b"%PDF-") else None
+        if content_type is None:
+            refuse(415, "MODEL_SOURCE_UNSUPPORTED", "This file requires extracted-text review.")
+        return {"filename": upload["filename"], "content_type": content_type, "content_hash": upload["content_hash"], "data_base64": blob["file_base64"]}
+
     def public_upload(self, upload: dict, include_text: bool = False) -> dict:
-        result = {key: value for key, value in upload.items() if key not in {"file_base64", "text", "commit_fingerprint", "kind"}}
+        result = {key: value for key, value in upload.items() if key not in {"file_base64", "text", "commit_fingerprint", "kind", "extraction_run_id", "extraction_started_at"}}
         result["extracted_characters"] = len(upload.get("text", ""))
+        result["model_source_available"] = upload.get("size_bytes", MAX_FILE_BYTES) <= 4 * 1024 * 1024 and Path(upload.get("filename", "")).suffix.lower() in {".png", ".jpg", ".jpeg", ".pdf"}
         if include_text:
             result["extracted_text"] = upload.get("text", "")
         return result
@@ -457,7 +538,7 @@ class DocumentWorkspace:
     def propose(self, scope: dict, identifier: str, proposal: dict, expected: int) -> dict:
         self.writable(scope)
         upload = self.owned(scope, identifier, "upload")
-        if upload["revision"] != expected or upload["status"] not in {"REVIEW", "NEEDS_TEXT", "INDEX_FAILED", "INTERRUPTED"}:
+        if upload["revision"] != expected or upload["status"] not in {"REVIEW", "NEEDS_TEXT", "INDEX_FAILED", "INTERRUPTED", "EXTRACTING", "EXTRACTION_FAILED"}:
             refuse(409, "LIBRARY_REVISION_CONFLICT", "The attachment changed. Reload before preparing another proposal.")
         if len(canonical(proposal)) > 100_000:
             refuse(422, "PROPOSAL_TOO_LARGE", "The review proposal exceeds its size limit.")
@@ -470,7 +551,7 @@ class DocumentWorkspace:
         uploads = self.store.list(scope["workspaceId"], "upload", owner=scope["actorId"])
         all_documents = self.store.list(scope["workspaceId"], "document")
         documents = [item for item in all_documents if self.can_read(scope, item)]
-        return {"as_of": timestamp(), "scope": "owned uploads and permitted documents", "counts_complete": len(uploads) < 1000 and len(all_documents) < 1000, "sample_limit": 1000, "uploaded": len(uploads), "pending_review": sum(item["status"] in {"REVIEW", "NEEDS_TEXT"} for item in uploads),
+        return {"as_of": timestamp(), "scope": "owned uploads and permitted documents", "counts_complete": len(uploads) < 1000 and len(all_documents) < 1000, "sample_limit": 1000, "uploaded": len(uploads), "pending_review": sum(item["status"] in {"REVIEW", "NEEDS_TEXT", "EXTRACTING", "EXTRACTION_FAILED"} for item in uploads),
             "indexing": sum(item["status"] == "INDEXING" for item in uploads), "index_failed": sum(item["status"] in {"INDEX_FAILED", "INTERRUPTED"} for item in uploads),
             "searchable_documents": sum(bool(item.get("current_upload_id")) for item in documents), "documents": [{key: value for key, value in item.items() if key not in {"form_fields", "form_rows"}} for item in documents],
             "supported_extensions": SUPPORTED_SUFFIXES, "max_upload_bytes": MAX_FILE_BYTES, "vector_index_configured": self.vectors is not None,
@@ -521,6 +602,10 @@ class DocumentWorkspace:
         self.writable(scope)
         with self.lock, self.store.engine.begin() as connection:
             upload = self.owned(scope, upload_id, "upload")
+            if upload["status"] in {"EXTRACTING", "EXTRACTION_FAILED"}:
+                if upload["revision"] != expected or (upload.get("extraction_state") == "RUNNING" and time.time() - upload.get("extraction_started_at", time.time()) < 300):
+                    refuse(409, "EXTRACTION_RECOVERY_NOT_READY", "Refresh first; an active extraction cannot be restarted.")
+                return self.public_upload(self.store.put(scope["workspaceId"], {**upload, "status": "EXTRACTING", "extraction_state": "QUEUED"}, expected, connection))
             if upload["revision"] != expected or upload["status"] != "INDEXING" or time.time() - upload.get("index_started_at", time.time()) < 300:
                 refuse(409, "INDEX_RECOVERY_NOT_READY", "Refresh first. Only an indexing attempt older than five minutes can be marked interrupted.")
             document = self.store.get(scope["workspaceId"], upload["document_id"], connection)
@@ -532,12 +617,16 @@ class DocumentWorkspace:
 
     def commit(self, scope: dict, upload_id: str, request: dict) -> dict:
         self.writable(scope)
-        allowed = {"expected_revision", "schema_id", "schema_revision", "document_type", "mode", "document_id", "document_revision", "target", "form_fields", "form_rows", "create_record", "share_with_schema_roles", "review_confirmed", "extraction_acknowledged"}
+        allowed = {"expected_revision", "schema_id", "schema_revision", "document_type", "mode", "document_id", "document_revision", "target", "form_fields", "form_rows", "create_record", "share_with_schema_roles", "review_confirmed", "extraction_acknowledged", "synthetic_source_confirmed"}
         if set(request) - allowed or request.get("review_confirmed") is not True:
             refuse(422, "REVIEW_REQUIRED", "Review and explicitly confirm the document association and fields.")
+        if "synthetic_source_confirmed" in request and type(request["synthetic_source_confirmed"]) is not bool:
+            refuse(422, "REVIEW_REQUIRED", "The fictional-source declaration must be an explicit boolean.")
         fingerprint = hashlib.sha256(canonical({key: value for key, value in request.items() if key != "expected_revision"}).encode()).hexdigest()
         with self.lock:
             upload = self.owned(scope, upload_id, "upload")
+            if upload["status"] in {"EXTRACTING", "EXTRACTION_FAILED"}:
+                refuse(409, "EXTRACTION_NOT_COMPLETE", "Document extraction must finish before storage can be confirmed.")
             if upload["status"] == "READY":
                 if upload.get("commit_fingerprint") != fingerprint:
                     refuse(409, "COMMIT_KEY_CONFLICT", "This attachment was already confirmed with different fields.")
@@ -596,12 +685,16 @@ class DocumentWorkspace:
             if reservation and (reservation["owner_id"] != scope["actorId"] or reservation.get("pending_upload_id") or not previous and reservation.get("current_upload_id")):
                 refuse(409, "DOCUMENT_REVISION_CONFLICT", "The document has an active or completed reservation. Reload it.")
             sensitivity = "restricted" if type_is_restricted(schema, document_type) else schema["minimum_sensitivity"]
+            if sensitivity == "restricted" and self.vectors and getattr(self.vectors, "requires_synthetic_confirmation", lambda _: False)(scope) and request.get("synthetic_source_confirmed") is not True:
+                refuse(422, "SYNTHETIC_SOURCE_CONFIRMATION_REQUIRED", "Confirm that this source contains no real personal or medical information before using this prototype storage location.")
             destination = collection_route(scope, schema, sensitivity == "restricted")
             readers = schema["reader_roles"] if request.get("share_with_schema_roles") is True and sensitivity != "restricted" else []
             candidate = {"id": identifier, "kind": "document", "owner_id": scope["actorId"], "schema_id": schema["id"], "schema_revision": schema["revision"],
                 "source_system_id": schema["source_system_id"], "source_entity": schema["source_entity"], "document_type": document_type, "target": target, "sensitivity": sensitivity,
                 "reader_roles": readers, "vector_collection": destination["collection"], "routing_version": 1, "form_fields": fields, "form_rows": reviewed_rows if len(reviewed_rows) > 1 or request.get("form_rows") is not None else [], "current_upload_id": previous.get("current_upload_id") if previous else None, "version": previous.get("version", 0) if previous else 0,
                 "pending_upload_id": upload_id, "created_at": previous["created_at"] if previous else timestamp()}
+            if request.get("synthetic_source_confirmed") is True:
+                candidate["synthetic_source_confirmed"] = True
             with self.store.engine.begin() as connection:
                 # Reserve the upload without publishing its fields or access changes.
                 # Existing readers must see one complete old version until promotion.
@@ -672,4 +765,4 @@ class DocumentWorkspace:
         if not upload or upload["status"] != "READY":
             refuse(409, "DOCUMENT_NOT_READY", "The current document is not confirmed searchable.")
         return {"document_id": document_id, "upload_id": upload["id"], "version": document["version"], "filename": upload["filename"], "document_type": document["document_type"],
-            "source_system_id": document["source_system_id"], "source_entity": document["source_entity"], "vector_collection": document.get("vector_collection", self.vectors.collection if self.vectors else None), "target": document["target"], "text": upload["text"], "form_fields": document.get("form_fields", {}), "form_rows": document.get("form_rows", []), "warnings": upload["warnings"]}
+            "source_system_id": document["source_system_id"], "source_entity": document["source_entity"], "vector_collection": document.get("vector_collection", self.vectors.collection if self.vectors else None), "target": document["target"], "text": upload["text"], "form_fields": document.get("form_fields", {}), "form_rows": document.get("form_rows", []), "warnings": upload["warnings"], "synthetic_source_confirmed": document.get("synthetic_source_confirmed", False)}

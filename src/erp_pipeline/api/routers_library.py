@@ -5,7 +5,7 @@ import os
 import threading
 from typing import Any
 
-from fastapi import APIRouter, File, Form, Header, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, Header, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -38,7 +38,8 @@ def _workspace(request: Request) -> DocumentWorkspace:
             location = locations.get(StorageTier.HOT)
             vectors = LibraryVectors(build_qdrant_client(runtime.qdrant), services.embedding,
                 os.environ.get("ERP_LIBRARY_COLLECTION", "erp_documents_private"),
-                restricted_allowed=getattr(location, "value", str(location)) == "on_premises")
+                restricted_allowed=getattr(location, "value", str(location)) == "on_premises",
+                synthetic_workspaces=frozenset(value.strip() for value in os.environ.get("ERP_LIBRARY_SYNTHETIC_WORKSPACES", "").split(",") if value.strip()))
         result = DocumentWorkspace(WorkspaceStore(engine, RepresentationCipher()), vectors)
         request.app.state.document_workspace = result
         return result
@@ -82,19 +83,34 @@ def list_uploads(request: Request, session_id: str):
 
 
 @library_router.post("/uploads", status_code=201, operation_id="stageChatDocument")
-def stage(request: Request, file: UploadFile = File(...), session_id: str = Form(...), idempotency_key: str = Form(...)):
+def stage(request: Request, background_tasks: BackgroundTasks, file: UploadFile = File(...), session_id: str = Form(...), idempotency_key: str = Form(...), defer_extraction: bool = Form(False)):
     def operation():
         scope = _scope(request)
         service = _workspace(request)
         service.writable(scope)
         data = file.file.read(MAX_FILE_BYTES + 1)
-        return service.stage(scope, file.filename or "attachment", data, session_id, idempotency_key)
+        result = service.stage(scope, file.filename or "attachment", data, session_id, idempotency_key, defer_extraction)
+        if result["status"] == "EXTRACTING":
+            background_tasks.add_task(service.complete_extraction, scope, result["id"])
+        return result
     return _run(operation)
 
 
 @library_router.get("/uploads/{upload_id}", operation_id="getChatDocumentUpload")
-def get_upload(request: Request, upload_id: str, include_text: bool = False):
-    return _run(lambda: _workspace(request).get_upload(_scope(request), upload_id, include_text))
+def get_upload(request: Request, upload_id: str, background_tasks: BackgroundTasks, include_text: bool = False):
+    def operation():
+        service, scope = _workspace(request), _scope(request)
+        result = service.get_upload(scope, upload_id, include_text)
+        if result["status"] == "EXTRACTING" and scope["canUpload"] and not scope["readOnly"]:
+            background_tasks.add_task(service.complete_extraction, scope, upload_id)
+        return result
+    return _run(operation)
+
+
+@library_router.get("/uploads/{upload_id}/source", operation_id="getPrivateModelDocumentSource")
+def model_source(request: Request, upload_id: str, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return _run(lambda: _workspace(request).model_source(_scope(request), upload_id))
 
 
 @library_router.post("/uploads/{upload_id}/confirm", operation_id="confirmChatDocument")

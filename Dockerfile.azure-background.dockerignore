@@ -1,0 +1,11 @@
+**
+!Dockerfile.azure-background
+!Dockerfile.azure-background.dockerignore
+!src/
+!src/**
+!tests/
+!tests/**
+!artifacts/
+!artifacts/openapi_contract_snapshot.json
+**/__pycache__
+**/*.pyc

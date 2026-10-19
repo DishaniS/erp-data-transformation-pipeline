@@ -90,6 +90,155 @@ def test_staged_upload_is_encrypted_and_never_searchable(workspace):
     assert all("Example Person" not in row and "Registration form" not in row for row in rows)
 
 
+def test_deferred_upload_is_durable_before_extraction_and_cannot_commit(workspace, schema, monkeypatch):
+    def forbidden(*args):
+        raise AssertionError("OCR must not run before acknowledgement")
+    monkeypatch.setattr("erp_pipeline.document_workspace.extract_content", forbidden)
+    staged = workspace.stage(scope(), "form.txt", b"Name: Example", "chat_fixture", "async-request", True)
+    assert staged["status"] == "EXTRACTING"
+    assert workspace.owned(scope(), "blob_" + staged["id"])["file_base64"]
+    with pytest.raises(WorkspaceError) as failure:
+        workspace.commit(scope(), staged["id"], request_for(staged, schema))
+    assert failure.value.code == "EXTRACTION_NOT_COMPLETE"
+    assert workspace.stage(scope(), "form.txt", b"Name: Example", "chat_fixture", "async-request", True)["id"] == staged["id"]
+
+
+def test_model_proposal_is_preserved_when_background_extraction_finishes(workspace, monkeypatch):
+    staged = workspace.stage(scope(), "form.txt", b"Name: Example", "chat_fixture", "async-model", True)
+    def extractor(*args):
+        current = workspace.get_upload(scope(), staged["id"])
+        workspace.propose(scope(), staged["id"], {"summary": "Unconfirmed model proposal"}, current["revision"])
+        return "Name: Example", []
+    monkeypatch.setattr("erp_pipeline.document_workspace.extract_content", extractor)
+    workspace.complete_extraction(scope(), staged["id"])
+    current = workspace.get_upload(scope(), staged["id"], True)
+    assert current["status"] == "REVIEW"
+    assert current["proposal"]["summary"] == "Unconfirmed model proposal"
+    assert current["extracted_text"] == "Name: Example"
+    assert "extraction_run_id" not in current
+
+
+def test_source_access_is_owner_scoped_and_never_part_of_public_upload(workspace):
+    data = b"%PDF-1.7\nsynthetic test fixture"
+    staged = workspace.stage(scope(), "form.pdf", data, "chat_fixture", "async-source", True)
+    source = workspace.model_source(scope(), staged["id"])
+    assert base64.b64decode(source["data_base64"]) == data
+    assert source["content_type"] == "application/pdf"
+    assert "data_base64" not in workspace.get_upload(scope(), staged["id"])
+    with pytest.raises(WorkspaceError) as failure:
+        workspace.model_source(scope("someone-else"), staged["id"])
+    assert failure.value.status == 404
+
+
+def test_private_source_route_requires_api_key_owner_scope_and_upload_authority(workspace):
+    from fastapi.testclient import TestClient
+    from erp_pipeline.api import ApiSettings, create_app
+    staged = workspace.stage(scope(), "form.pdf", b"%PDF-1.7\nsynthetic", "chat_fixture", "source-http", True)
+    app = create_app(settings=ApiSettings(api_key=KEY))
+    app.state.document_workspace = workspace
+    path = f"/v1/library/uploads/{staged['id']}/source"
+    with TestClient(app) as client:
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers={"X-API-Key": KEY}).status_code == 401
+        assert client.get(path, headers={"X-API-Key": KEY, "X-Library-Scope": token(scope("someone-else"))}).status_code == 404
+        read_scope = scope()
+        read_scope.update(readOnly=True, canUpload=False, canManage=False)
+        assert client.get(path, headers={"X-API-Key": KEY, "X-Library-Scope": token(read_scope)}).status_code == 403
+        source = client.get(path, headers={"X-API-Key": KEY, "X-Library-Scope": token(scope())})
+        assert source.status_code == 200 and source.json()["content_type"] == "application/pdf"
+        assert source.headers["cache-control"] == "no-store"
+
+
+def test_failed_background_extraction_is_not_silently_reviewed_and_can_recover(workspace, monkeypatch):
+    staged = workspace.stage(scope(), "form.txt", b"Name: Example", "chat_fixture", "async-failure", True)
+    def fail(*args):
+        raise RuntimeError("private parser internals")
+    monkeypatch.setattr("erp_pipeline.document_workspace.extract_content", fail)
+    workspace.complete_extraction(scope(), staged["id"])
+    current = workspace.get_upload(scope(), staged["id"])
+    assert current["status"] == "EXTRACTION_FAILED"
+    assert "private parser" not in json.dumps(current)
+    recovered = workspace.recover(scope(), staged["id"], current["revision"])
+    assert recovered["status"] == "EXTRACTING"
+    assert recovered["extraction_state"] == "QUEUED"
+
+
+def test_late_extraction_cannot_overwrite_a_new_worker_lease(workspace, monkeypatch):
+    staged = workspace.stage(scope(), "form.txt", b"Example", "chat_fixture", "async-fenced", True)
+    def extractor(*args):
+        current = workspace.owned(scope(), staged["id"])
+        workspace.store.put(scope()["workspaceId"], {**current, "extraction_run_id": "new-worker"}, current["revision"])
+        return "Late stale text", []
+    monkeypatch.setattr("erp_pipeline.document_workspace.extract_content", extractor)
+    workspace.complete_extraction(scope(), staged["id"])
+    current = workspace.get_upload(scope(), staged["id"], True)
+    assert current["status"] == "EXTRACTING"
+    assert current["extracted_text"] == ""
+
+
+def test_saturated_extraction_capacity_keeps_upload_queued(workspace):
+    staged = workspace.stage(scope(), "form.txt", b"Example", "chat_fixture", "async-capacity", True)
+    assert workspace.extraction_slots.acquire(False)
+    assert workspace.extraction_slots.acquire(False)
+    try:
+        workspace.complete_extraction(scope(), staged["id"])
+        assert workspace.get_upload(scope(), staged["id"])["extraction_state"] == "QUEUED"
+    finally:
+        workspace.extraction_slots.release()
+        workspace.extraction_slots.release()
+
+
+def test_large_model_source_remains_on_extracted_text_path(workspace):
+    staged = workspace.stage(scope(), "form.pdf", b"%PDF-" + b"x" * (4 * 1024 * 1024), "chat_fixture", "async-source-size", True)
+    with pytest.raises(WorkspaceError) as failure:
+        workspace.model_source(scope(), staged["id"])
+    assert failure.value.code == "MODEL_SOURCE_TOO_LARGE"
+
+
+def test_real_http_upload_acknowledges_before_background_extraction_finishes(workspace, monkeypatch):
+    import socket
+    import threading
+    import httpx
+    import uvicorn
+    from erp_pipeline.api import ApiSettings, create_app
+    entered, release = threading.Event(), threading.Event()
+    def slow_extract(*args):
+        entered.set()
+        assert release.wait(5), "Test did not release the isolated extractor"
+        return "Reviewed synthetic text", []
+    monkeypatch.setattr("erp_pipeline.document_workspace.extract_content", slow_extract)
+    app = create_app(settings=ApiSettings(api_key=KEY))
+    app.state.document_workspace = workspace
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    port = listener.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, log_level="critical", lifespan="off"))
+    thread = threading.Thread(target=lambda: server.run(sockets=[listener]), daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 3
+        while not server.started and time.monotonic() < deadline:
+            threading.Event().wait(0.01)
+        assert server.started
+        headers = {"X-API-Key": KEY, "X-Library-Scope": token(scope())}
+        with httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=3) as client:
+            result = client.post("/v1/library/uploads", headers=headers,
+                files={"file": ("form.txt", b"Synthetic form", "text/plain")},
+                data={"session_id": "chat_fixture", "idempotency_key": "http-background", "defer_extraction": "true"})
+            assert result.status_code == 201
+            assert result.json()["status"] == "EXTRACTING"
+            assert entered.wait(1) and not release.is_set()
+            # Another request is served while extraction is still blocked.
+            assert client.get("/v1/library/catalog", headers=headers).status_code == 200
+            assert workspace.get_upload(scope(), result.json()["id"])["status"] == "EXTRACTING"
+    finally:
+        release.set()
+        server.should_exit = True
+        thread.join(timeout=5)
+        listener.close()
+    assert not thread.is_alive()
+
+
 def test_upload_idempotency_and_changed_key_conflict(workspace):
     first = upload(workspace)
     assert upload(workspace)["id"] == first["id"]

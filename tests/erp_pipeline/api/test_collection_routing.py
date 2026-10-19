@@ -82,6 +82,36 @@ def test_arbitrary_collection_inputs_rejected(routed, schema):
         routed.migrate_collection(scope(), {"document_id": "x", "review_confirmed": True, "collection": "erp_vectors_hot"})
 
 
+def test_synthetic_restricted_cloud_storage_requires_server_workspace_and_explicit_source_review(routed, schema):
+    routed.vectors.restricted_allowed = False
+    staged = upload(routed, "synthetic-medical")
+    body = {**request_for(staged, schema), "document_type": "medical_certificate", "synthetic_source_confirmed": True}
+    denied = routed.commit(scope(), staged["id"], body)
+    assert denied["status"] == "INDEX_FAILED" and denied["error_code"] == "STORAGE_POLICY_DENIED"
+    assert routed.search(scope(), "Member")["count"] == 0
+    routed.vectors.synthetic_workspaces = frozenset({scope()["workspaceId"]})
+    route = routed.catalog(scope())["entities"][0]["collection_routes"][1]
+    assert route["requires_synthetic_confirmation"] is True
+    with pytest.raises(WorkspaceError) as missing:
+        routed.commit(scope(), staged["id"], {**body, "expected_revision": denied["revision"], "synthetic_source_confirmed": False})
+    assert missing.value.code == "SYNTHETIC_SOURCE_CONFIRMATION_REQUIRED"
+    with pytest.raises(WorkspaceError):
+        routed.commit(scope(), staged["id"], {**body, "expected_revision": denied["revision"], "synthetic_source_confirmed": "true"})
+    done = routed.commit(scope(), staged["id"], {**body, "expected_revision": denied["revision"]})
+    assert done["status"] == "READY" and "_restricted_" in done["vector_collection"]
+    assert routed.resolve(scope(), done["document_id"])["synthetic_source_confirmed"] is True
+    assert routed.search(scope("another-owner"), "Member")["count"] == 0
+    assert routed.search(scope(workspace="another-workspace"), "Member")["count"] == 0
+
+
+def test_restricted_storage_default_remains_on_premises_only(routed, schema):
+    routed.vectors.restricted_allowed = False
+    staged = upload(routed, "real-policy-default")
+    receipt = routed.commit(scope(), staged["id"], {**request_for(staged, schema), "document_type": "medical_certificate"})
+    assert receipt["status"] == "INDEX_FAILED" and receipt["error_code"] == "STORAGE_POLICY_DENIED"
+    assert routed.catalog(scope())["entities"][0]["collection_routes"][1]["requires_synthetic_confirmation"] is False
+
+
 def test_legacy_search_migration_retains_points_version_and_records(routed, schema):
     receipt = confirm(routed, schema, "migration-good")
     document = as_legacy(routed, receipt)

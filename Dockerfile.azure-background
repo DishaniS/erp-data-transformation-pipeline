@@ -1,0 +1,13 @@
+FROM crerpdatatransformju0h8k.azurecr.io/erp-data-transformation-api:lcwe-20261017-indexfix-v1 AS verified
+WORKDIR /app
+COPY src ./src
+COPY tests ./tests
+COPY artifacts/openapi_contract_snapshot.json ./artifacts/openapi_contract_snapshot.json
+RUN python -m pytest -q tests/erp_pipeline/api/test_document_workspace.py tests/erp_pipeline/api/test_collection_routing.py tests/erp_pipeline/api/test_document_and_live_http.py tests/erp_pipeline/api/test_openapi_security_scheme.py tests/erp_pipeline/api/test_api_contract.py
+
+# Keep the known deployed dependency set, cached embeddings, OCR executable,
+# startup command and storage locations. No credentials or test corpus ship.
+FROM crerpdatatransformju0h8k.azurecr.io/erp-data-transformation-api:lcwe-20261017-indexfix-v1
+WORKDIR /app
+COPY --from=verified /app/src ./src
+RUN python -c "from erp_pipeline.api import create_app; spec=create_app().openapi(); assert '/v1/library/uploads/{upload_id}/source' in spec['paths']; print('background upload API verified')"
