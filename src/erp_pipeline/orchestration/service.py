@@ -579,17 +579,8 @@ class PipelineServices:
 
         document = getattr(result, "document", None) or result
 
-        classification = (getattr(document, "document_metadata", None) or {}).get(
-            "document_classification"
-        )
-        classification_metadata = {}
-        if classification is not None:
-            classification_metadata["document_classification"] = classification
-            if classification["document_type"] != "unknown":
-                classification_metadata["document_type"] = classification["document_type"]
-
         if identity is None or getattr(identity, "is_empty", True):
-            return tuple(document_to_representations(result, metadata=classification_metadata))
+            return tuple(document_to_representations(result))
 
         from erp_pipeline.ai.attached_documents import (
             DocumentAttachment,
@@ -638,10 +629,7 @@ class PipelineServices:
         )
 
         return tuple(
-            # Explicit caller metadata retains precedence. Automatic content
-            # classification is separate from declared ERP record identity.
-            replace(item, metadata={**classification_metadata, **item.metadata})
-            for item in attached_document_to_representations(document, attachment)
+            attached_document_to_representations(document, attachment)
         )
 
     def embed(self, representations: Sequence[Any]) -> Any:
@@ -687,17 +675,6 @@ class PipelineServices:
         service = self._require(self.ingestion, "file ingestion service")
         uploads = self._require(self.uploads, "upload store")
         result = service.ingest(uploads.path_for(upload_id))
-        document = getattr(result, "document", None)
-        if document is not None:
-            from erp_pipeline.ingestion.document_classification import classify_uploaded_document
-
-            classification = classify_uploaded_document(document)
-            result = replace(result, document=replace(
-                document, document_metadata={
-                    **document.document_metadata,
-                    "document_classification": classification,
-                },
-            ))
         self.upload_results[upload_id] = result
 
         return result
