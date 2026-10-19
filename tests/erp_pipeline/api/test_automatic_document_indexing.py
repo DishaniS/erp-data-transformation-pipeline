@@ -278,7 +278,8 @@ def test_a_filename_never_becomes_an_erp_identity(client, harness):
     for representation in stored:
         assert representation.metadata.get("business_key_value") is None
         assert representation.metadata.get("business_key_name") is None
-        assert representation.metadata.get("document_type") is None
+        # Content classification is inferred; ERP identity remains undeclared.
+        assert representation.metadata.get("document_type") == "birth_certificate"
 
     # And the identity filter finds nothing, because nothing was declared.
     assert search(client, business_key_value="EMP999") == []

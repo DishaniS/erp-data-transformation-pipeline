@@ -479,7 +479,8 @@ def upload_document(
     is what the existing frontend does - behaves exactly as it did before, plus
     the indexing that used to require a second call.
 
-    Identity is DECLARED, never inferred. A file named
+    ERP record identity is DECLARED, never inferred. Content classification is
+    inferred separately from extracted text, never from the filename. A file named
     ``EMP002_birth_certificate.jpg`` uploaded without metadata carries no
     business key: see ``orchestration.document_identity`` for why a guess in
     that field would be worse than an absence.
@@ -503,6 +504,9 @@ def upload_document(
     stored = _store_upload(service, file, DOCUMENT_SUFFIXES)
     result = _ingest_upload_or_refuse(service, stored.upload_id)
     document = getattr(result, "document", None)
+    classification = (getattr(document, "document_metadata", None) or {}).get(
+        "document_classification", {}
+    )
     warnings = _warning_messages(result)
     job_id, status, indexing_error = _start_document_indexing(
         service, stored.upload_id, identity
@@ -520,6 +524,9 @@ def upload_document(
         file_type=str(getattr(getattr(result, "file", None), "file_type", "") or ""),
         page_count=len(getattr(document, "pages", ()) or ()),
         extraction_status=str(getattr(result, "status", "") or ""),
+        document_type=classification.get("document_type", "unknown"),
+        confidence_score=classification.get("confidence_score", 0.0),
+        matched_rules=classification.get("matched_rules", ()),
         ocr_used=_ocr_was_used(document),
         index_job_id=job_id,
         indexing_status=status,

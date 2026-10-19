@@ -18,6 +18,8 @@ from erp_pipeline.ingestion.document_classification import (
     ClassificationRule,
     classify_document,
     classify_extracted_document,
+    classify_upload_text,
+    classify_uploaded_document,
 )
 from erp_pipeline.ingestion.models import FileType
 
@@ -297,3 +299,71 @@ def test_the_module_never_imports_a_dataset_module():
 
     assert "bpi2020" not in source
     assert "erp_integrations" not in source
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("National Identity Card\nNIC Number: 199512345678\nName: TEST PERSON", "nic"),
+    ("NIC Number: 951234567V", "nic"),
+    ("NIC Number: 199550123456", "nic"),
+    ("National Identity Card\nName: TEST PERSON\nDOB: 1995-01-01", "nic"),
+    ("Certificate of Birth\nPlace of Birth: TEST TOWN", "birth_certificate"),
+    ("Birth Registration\nRegistrar General\nDate of Birth: 2000-01-01", "birth_certificate"),
+    ("Birth Certificate\nName: TEST PERSON\nDOB: 2000-01-01", "birth_certificate"),
+    ("Medical Invoice\nHospital\nPatient: TEST PERSON\nTotal Amount: 150", "medical_bill"),
+    ("Hospital\nPatient: TEST PERSON\nConsultation\nCharges: 150", "medical_bill"),
+    ("Name: TEST PERSON\nDate of Birth: 2000-01-01", "unknown"),
+    ("Hospital Bill", "unknown"),
+    ("National Identity Card", "unknown"),
+    ("Certificate of Birth", "unknown"),
+    ("Hospital Patient Total Amount", "unknown"),
+    ("199512345678", "unknown"),
+    ("NIC Number: 199500012345", "unknown"),
+    ("NIC Number: 199599912345", "unknown"),
+    ("NIC Number: 95123456789V", "unknown"),
+    ("invoice total amount for office chairs", "unknown"),
+    (None, "unknown"),
+    ("", "unknown"),
+    ("\n\t", "unknown"),
+    ("xyz qzx 123", "unknown"),
+    ("National Identity Card NIC Number 199512345678\nBirth Certificate Name TEST DOB 2000", "unknown"),
+    ("NIC Number 199512345678 Birth Registration Registrar General", "unknown"),
+    ("Medical Invoice Hospital Patient Consultation Total Amount 500\nNIC Number 951234567V Date of Birth 1995", "medical_bill"),
+    ("Certificate of Birth Registrar General Name TEST\nParent NIC Number 951234567V", "birth_certificate"),
+    ("National Identity Card NIC Number 951234567V\nPlace of Birth TEST Date of Birth 1995", "nic"),
+])
+def test_upload_rules_require_combinations_and_abstain(text, expected):
+    result = classify_upload_text(text)
+    assert result["document_type"] == expected
+    assert result["confidence_score"] >= 0
+    assert set(result) == {"document_type", "confidence_score", "matched_rules"}
+    assert all("TEST" not in rule and "951234567V" not in rule for rule in result["matched_rules"])
+
+
+def test_upload_rule_points_are_not_probabilities_or_frequency_counts():
+    text = "National Identity Card NIC Number 199512345678 Name TEST"
+    result = classify_upload_text(text)
+    assert result["confidence_score"] > 1
+    assert classify_upload_text(text * 20) == result
+
+
+def test_upload_normalization_handles_unicode_and_separators():
+    assert classify_upload_text("ＮＡＴＩＯＮＡＬ IDENTITY-CARD\nNIC_NUMBER: 951234567V")["document_type"] == "nic"
+
+
+def test_upload_classification_uses_later_pages_and_refuses_incomplete_extraction():
+    from types import SimpleNamespace
+    page = lambda text, status="extracted", truncated=False: SimpleNamespace(text=text, status=status, truncated=truncated)
+    document = SimpleNamespace(status="extracted", pages=[page("Cover page"), page("Birth Certificate\nRegistrar General")])
+    assert classify_uploaded_document(document)["document_type"] == "birth_certificate"
+    document.pages.append(page("unreadable", "ocr_unavailable"))
+    assert classify_uploaded_document(document)["document_type"] == "unknown"
+    document.pages = [page("Birth Certificate Registrar General", truncated=True)]
+    assert classify_uploaded_document(document)["document_type"] == "unknown"
+
+
+def test_upload_metadata_never_contains_recognized_personal_values():
+    import json
+    result = classify_upload_text("National Identity Card NIC Number: 951234567V Name: SECRET_PERSON")
+    assert result["document_type"] == "nic"
+    assert "SECRET_PERSON" not in json.dumps(result)
+    assert "951234567V" not in json.dumps(result)

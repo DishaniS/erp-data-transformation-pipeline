@@ -175,6 +175,13 @@ class DocumentUploadResponse(BaseModel):
     file_type: str | None = None
     page_count: int = 0
     extraction_status: str | None = None
+    #: Inferred from extracted text; independent of a caller-declared type.
+    document_type: str = "unknown"
+    confidence_score: float = Field(
+        default=0.0, ge=0.0,
+        description="Weighted rule evidence points, NOT a statistical probability.",
+    )
+    matched_rules: Sequence[str] = ()
     #: Phase 6. The indexing job this upload started, and that job's CURRENT
     #: status - not a promise about its outcome.
     #:

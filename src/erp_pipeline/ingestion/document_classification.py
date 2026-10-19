@@ -347,6 +347,112 @@ def classify_extracted_document(
     )
 
 
+# Upload classification is deliberately separate from the generic filename
+# classifier above: an unreadable "nic.png" must never become an identity card.
+# Each rule contributes once. Scores are evidence points, NOT probabilities.
+_UPLOAD_RULES = {
+    "nic": (
+        ("nic.title", 4, r"\b(?:national identity card|identity card)\b"),
+        ("nic.label", 3, r"\bnic(?: number| no)?\b"),
+        ("nic.name", 1, r"\b(?:name|full name)\b"),
+        ("nic.dob", 1, r"\b(?:date of birth|dob)\b"),
+    ),
+    "birth_certificate": (
+        ("birth.title", 4, r"\b(?:certificate of birth|birth certificate)\b"),
+        ("birth.registration", 3, r"\b(?:birth registration|registration of birth)\b"),
+        ("birth.registrar", 3, r"\b(?:registrar general|registrar of births)\b"),
+        ("birth.place", 2, r"\bplace of birth\b"),
+        ("birth.dob", 1, r"\b(?:date of birth|dob)\b"),
+        ("birth.name", 1, r"\bname\b"),
+    ),
+    "medical_bill": (
+        ("medical.title", 4, r"\b(?:medical (?:invoice|bill)|hospital (?:invoice|bill))\b"),
+        ("medical.hospital", 2, r"\b(?:hospital|clinic)\b"),
+        ("medical.patient", 1, r"\bpatient\b"),
+        ("medical.consultation", 2, r"\bconsultation\b"),
+        ("medical.treatment", 2, r"\btreatment\b"),
+        ("medical.charges", 1, r"\bcharges\b"),
+        ("medical.total", 1, r"\btotal amount\b"),
+    ),
+}
+_NIC_NUMBER = re.compile(
+    r"(?<![A-Za-z0-9])(?:[0-9]{9}[VvXx]|(?:19|20)[0-9]{10})(?![A-Za-z0-9])"
+)
+
+
+def classify_upload_text(text: str | None) -> dict[str, Any]:
+    """Conservative English NIC/birth/medical rules over extracted text only.
+
+    Require >=6 points and multiple independent signals. A unique strong title
+    can disambiguate a medical bill/certificate mentioning somebody's NIC.
+    Competing titles or otherwise competing eligible types abstain. Identifier
+    shape is only supporting evidence, never identity/authenticity validation.
+    Only fixed rule IDs are returned, never matched personal values.
+    """
+    import unicodedata
+
+    raw = unicodedata.normalize("NFKC", text or "")
+    normalized = _normalize(raw)
+    hits = {
+        kind: {rule_id: weight for rule_id, weight, pattern in rules
+               if re.search(pattern, normalized)}
+        for kind, rules in _UPLOAD_RULES.items()
+    }
+    for match in _NIC_NUMBER.finditer(raw):
+        number = match.group()
+        day = int(number[2:5] if len(number) == 10 else number[4:7])
+        if 1 <= day <= 366 or 501 <= day <= 866:
+            hits["nic"]["nic.number_format"] = 3
+            break
+
+    nic, birth, medical = (hits[k] for k in ("nic", "birth_certificate", "medical_bill"))
+    eligible = {
+        "nic": "nic.title" in nic or {"nic.label", "nic.number_format"} <= nic.keys(),
+        "birth_certificate": "birth.title" in birth or {"birth.registration", "birth.registrar"} <= birth.keys(),
+        "medical_bill": (
+            "medical.title" in medical
+            and bool({"medical.patient", "medical.consultation", "medical.treatment",
+                      "medical.charges", "medical.total"} & medical.keys())
+            or {"medical.hospital", "medical.patient"} <= medical.keys()
+            and bool({"medical.consultation", "medical.treatment"} & medical.keys())
+            and bool({"medical.charges", "medical.total"} & medical.keys())
+        ),
+    }
+    candidates = [kind for kind in hits if eligible[kind]
+                  and len(hits[kind]) >= 2 and sum(hits[kind].values()) >= 6]
+    titles = [kind for kind, prefix in (("nic", "nic"), ("birth_certificate", "birth"), ("medical_bill", "medical"))
+              if prefix + ".title" in hits[kind]]
+    selected = None
+    if len(titles) < 2:
+        if len(titles) == 1 and titles[0] in candidates:
+            selected = titles[0]
+        elif len(candidates) == 1:
+            selected = candidates[0]
+    if selected:
+        return {"document_type": selected,
+                "confidence_score": float(sum(hits[selected].values())),
+                "matched_rules": sorted(hits[selected])}
+    return {"document_type": "unknown", "confidence_score": 0.0,
+            "matched_rules": sorted(rule for rules in hits.values() for rule in rules)}
+
+
+def classify_uploaded_document(document: Any) -> dict[str, Any]:
+    """Use all successfully extracted pages, within ingestion's existing limits.
+
+    Refuse incomplete/unreadable extraction rather than classify a convenient
+    readable prefix that might omit a conflicting page. No filename fallback.
+    """
+    extracted = getattr(document, "document", None) or document
+    pages = getattr(extracted, "pages", ()) or ()
+    if str(getattr(extracted, "status", "")) in {"failed", "ocr_unavailable", "partial"} or any(
+        getattr(page, "truncated", False)
+        or str(getattr(page, "status", "")) in {"failed", "ocr_unavailable", "partial"}
+        for page in pages
+    ):
+        return {"document_type": "unknown", "confidence_score": 0.0, "matched_rules": []}
+    return classify_upload_text("\n".join(getattr(page, "text", "") or "" for page in pages))
+
+
 __all__ = [
     "CLASSIFIER_VERSION",
     "UNCLASSIFIED",
@@ -360,4 +466,6 @@ __all__ = [
     "DEFAULT_CONFIG",
     "classify_document",
     "classify_extracted_document",
+    "classify_upload_text",
+    "classify_uploaded_document",
 ]
