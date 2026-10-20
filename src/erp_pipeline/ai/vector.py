@@ -1,25 +1,3 @@
-"""Generic vector-store handoff, and a configurable Qdrant adapter.
-
-PHASE 11 HANDS OFF; PHASE 12 ROUTES (Step 31)
----------------------------------------------
-Nothing here decides WHERE a vector should live. There is no hot/warm/cold
-scoring, no sensitivity-based routing, no tier migration and no archival - those
-are Phase 12's, and a static test asserts their absence. This module's whole job
-is: given an embedding, put it somewhere, under a stable identity.
-
-CONFIGURABLE COLLECTION (Step 32)
----------------------------------
-No collection name is hard-coded anywhere in this package. The collection is
-a constructor argument, because a generic engine that knew one deployment's
-collection name would not be generic.
-
-DIMENSION IS CHECKED BEFORE THE WRITE (Step 38)
------------------------------------------------
-A dimension mismatch produces a typed ``EmbeddingDimensionError`` naming the
-model and the collection, rather than an opaque driver error several layers
-away from the cause.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -54,13 +32,7 @@ def build_vector_payload(
     representation: AIRepresentation | None = None,
     include_text: bool = False,
 ) -> dict[str, Any]:
-    """Safe structural payload for a stored vector (Step 37).
 
-    Identity, provenance and model facts - the things needed to trace a vector
-    back to its source and to decide later whether it is current. The AI text
-    is NOT included by default: it would double the storage and turn the index
-    into a second copy of the corpus.
-    """
     payload: dict[str, Any] = {
         "representation_id": record.representation_id,
         "entity_type": record.entity_type,
