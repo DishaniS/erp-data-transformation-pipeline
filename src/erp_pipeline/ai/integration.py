@@ -27,13 +27,6 @@ from erp_pipeline.sync.propagation import AIRepresentation, EmbeddingResult
 
 @dataclass
 class Phase11EmbeddingUpdater:
-    """Satisfies Phase 10's ``EmbeddingUpdater`` using the Phase 11 service.
-
-    Phase 10 has already decided the representation needs embedding by the time
-    it calls this - it compares hashes itself - so this adapter forces the
-    embedding rather than second-guessing that decision with its own skip check.
-    Two independent skip policies would eventually disagree.
-    """
 
     service: EmbeddingService
     calls: int = 0
