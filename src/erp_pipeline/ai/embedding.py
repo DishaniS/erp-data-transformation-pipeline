@@ -1,32 +1,3 @@
-"""The embedding model abstraction and its local implementation.
-
-    EmbeddingModel (protocol)
-        ├── SentenceTransformerModel   the real local model, loaded once
-        └── DeterministicTestModel     no download, no network, reproducible
-
-WHY AN ABSTRACTION (Step 15)
-----------------------------
-Nothing in the rest of the pipeline imports ``SentenceTransformer``. The service,
-the vector adapters and the evaluation code all speak to ``EmbeddingModel``, so
-swapping the model - which Phase 12 and any later research run will want to do -
-touches one class rather than every call site.
-
-LOCAL ONLY (Step 55)
---------------------
-There is no OpenAI, Gemini, Anthropic or remote Hugging Face inference path
-here, and no code that would silently fall back to one. If the local model
-cannot be loaded, that is reported as
-``EmbeddingModelUnavailableError`` - a run that quietly switched to a remote
-service would ship ERP content off the machine.
-
-DIMENSION IS MEASURED, NOT ASSUMED (Step 18)
---------------------------------------------
-``all-MiniLM-L6-v2`` is 384-dimensional, but this module asks the loaded model
-and then verifies against the first vector it actually produces. A hard-coded
-constant that drifted from reality would be discovered only when a vector store
-rejected a write.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -1,22 +1,3 @@
-"""Similarity and retrieval sanity evaluation (Steps 45-48).
-
-WHAT THIS IS, AND IS NOT
-------------------------
-A regression and research SANITY benchmark on a small synthetic ERP corpus. It
-is not evidence of production retrieval quality, and this module says so rather
-than letting a good-looking number imply it.
-
-Its real job is to catch the failures that would otherwise be invisible: a
-representation builder that stops including business content, a model swapped
-for one that does not understand the domain, a normalization bug that flattens
-every similarity toward the same value. Those show up here immediately.
-
-NO SELF-LABELLING
------------------
-Expected answers are hand-declared by the caller. Generating labels from the
-model and then measuring the model against them would measure nothing.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
